@@ -1,0 +1,35 @@
+# ===== Web 框架 =====
+fastapi==0.115.*
+uvicorn[standard]==0.34.*
+python-multipart==0.0.*
+python-dotenv==1.*
+pydantic==2.*
+
+# ===== JWT + 密码 =====
+python-jose[cryptography]==3.3.*
+bcrypt==4.*
+
+# ===== 数据库 =====
+sqlalchemy[asyncio]==2.0.*
+aiosqlite==0.20.*
+
+# ===== LLM (OpenAI SDK 兼容: Moonshot / ModelScope) =====
+openai==1.*
+
+# ===== Embedding (本地 BGE) =====
+sentence-transformers==3.*
+
+# ===== 向量数据库 =====
+chromadb==0.5.*
+
+# ===== 文件解析 =====
+pymupdf==1.25.*
+python-pptx==1.0.*
+
+# ===== 分块 (仅用 RecursiveCharacterTextSplitter) =====
+langchain-text-splitters==0.3.*
+
+# ===== 测试 =====
+pytest==8.*
+pytest-asyncio==0.24.*
+httpx==0.28.*
