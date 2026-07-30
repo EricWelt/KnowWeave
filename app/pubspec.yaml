@@ -1,0 +1,36 @@
+name: know_weave
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0           # 用于发起网络请求
+  shared_preferences: ^2.2.2 # 用于本地存储 JWT Token
+  
+  animations: ^2.0.11      # 负责 Material You 的高级展开动画
+  file_picker: ^8.0.0       # 文件导入（PDF/PPTX/MD）
+  flutter_riverpod: ^2.6.1  # 状态管理
+  go_router: ^14.6.2        # 声明式路由
+  flutter_animate: ^4.5.0   # 精致动画效果
+  flutter_markdown_plus: any
+  flutter_markdown_plus_latex: any
+  markdown: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
