@@ -1,103 +1,136 @@
-# KnowWeave
+English丨[简体中文](README.zh-Hans.md)
 
-> 知脉笔记（KnowWeave） —— 从「笔记应用 + LLM 封装」升级为**以自研 ReAct Agent 为核心的智能学习系统**。
+<div align="center">
+  <h1>KnowWeave</h1>
+  <p>Keep your study notes in Markdown, and let an AI assistant read them, summarize them, quiz you, and explain what you missed.</p>
+  <p>
+    <a href="#quick-start"><strong>Get Started</strong></a>
+    ·
+    <a href="docs/api.md"><strong>API Reference</strong></a>
+    ·
+    <a href="docs/frontend-architecture.md"><strong>Architecture</strong></a>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
+    <img src="https://img.shields.io/badge/python-3.10%2B-3776ab.svg" alt="Python 3.10 or later">
+    <img src="https://img.shields.io/badge/flutter-Material%203-02569b.svg" alt="Flutter with Material 3">
+  </p>
+</div>
 
-KnowWeave 是一个面向学习场景的智能笔记 + AI 复习系统：管理 Markdown 笔记，并由一个自研的
-ReAct（Reasoning + Acting）Agent 帮助你完成**检索笔记 → 生成摘要 → 出题自测 → 概念解释 →
-跨笔记关联**的完整复习闭环。
+KnowWeave is a note-taking app for studying. You write notes in Markdown, optionally import PDF, PowerPoint, or Markdown files, and then work with an assistant that reasons over what you have written.
 
-## ✨ 特性
+The assistant runs a ReAct loop: it plans a few steps, calls one tool at a time, reads the result, and keeps going until it can answer. It can search your notes by meaning, write a summary, generate a multiple-choice quiz, explain a concept you keep getting wrong, and point out how two notes relate. Every step it takes is recorded, so you can inspect which tools ran, how long each one took, and where the run drifted from its original plan.
 
-- **自研 ReAct Agent 引擎**（不依赖 LangChain/LangGraph）：THINK → ACT → OBSERVE 循环，支持任务规划、动态调整、多轮对话
-- **三层记忆架构**：短期（对话历史）· 长期（SQLite 知识掌握状态 mastery/薄弱点追踪）· 语义（ChromaDB 向量检索）
-- **RAG 全链路**：PDF/PPTX/Markdown 解析 → 文档分块 → BGE 本地向量化 → 语义检索
-- **5 个可组合工具**：search_notes / generate_summary / create_quiz / cross_reference / explain_concept（ToolRegistry 统一注册）
-- **可评测可观测**：每步记录耗时/成败，聚合任务完成率、工具调用成功率等指标；完整对话落库
-- **多模型可选**：OpenAI 兼容模型注册表，一行切换（ModelScope Qwen / NVIDIA GLM、MiniMax / Kimi Moonshot）
-- **现代 Flutter 前端**：Riverpod + go_router 分层架构，Material 3 主题（亮/暗），Android/iOS/Web
+## Features
 
-## 🏗️ 架构
+**Study assistant**
 
-```
-Flutter (app/) ←REST + JWT→ FastAPI (backend/)
-                              ├── REST: /auth /notes /upload /agent
-                              ├── Agent 引擎: planner / memory / eval_tracker / ReAct engine
-                              ├── 工具集: 5 个 Tool（ToolRegistry）
-                              ├── RAG: chunker → BGE embedding → ChromaDB
-                              └── 存储: SQLite（7 表）+ ChromaDB
-```
+- A ReAct (Reasoning and Acting) loop written for this project. No agent framework is involved; the model's decisions are plain JSON, so any OpenAI-compatible endpoint can drive it.
+- Five tools: `search_notes`, `generate_summary`, `create_quiz`, `cross_reference`, and `explain_concept`. They are declared in one registry, which also produces the descriptions the model reads when choosing a tool.
+- Quiz results feed back into a mastery level per note, together with the weak points worth revisiting.
 
-## 📦 技术栈
+**Memory**
 
-| 层 | 技术 |
-|---|---|
-| 后端 | Python 3.11 · FastAPI · SQLAlchemy(async) + SQLite(WAL) · ChromaDB · BGE-small-zh-v1.5 |
-| Agent | 自研 ReAct 引擎 · ToolRegistry · 三层记忆 · 评测追踪 |
-| LLM | OpenAI SDK 兼容多 provider（ModelScope / NVIDIA build / Moonshot），模型注册表可扩展 |
-| 前端 | Flutter · Riverpod · go_router · Material 3 |
+- Short term: the recent turns of the current conversation.
+- Long term: mastery level and weak points per note, stored in SQLite and updated after each quiz.
+- Semantic: note chunks embedded locally and retrieved by vector similarity.
 
-## 🚀 快速开始
+**Retrieval**
 
-### 后端
+- One upload endpoint accepts PDF, PowerPoint, and Markdown files; text notes are indexed as you create them.
+- Documents are parsed, split into overlapping chunks, embedded with BGE (`BAAI/bge-small-zh-v1.5`), and stored in ChromaDB. Embeddings run locally, so no external service is required.
+
+**Evaluation**
+
+- Each step records its duration and outcome.
+- A session aggregates into task completion rate, tool call success rate, average tool latency, and plan deviation rate.
+
+**Models**
+
+- A registry of OpenAI-compatible providers, switched with a single environment variable. ModelScope, NVIDIA build, and Moonshot are configured out of the box, and adding another endpoint is a small edit to one dictionary.
+
+## Quick Start
+
+### Backend
 
 ```bash
-# 1. 安装依赖（Python 3.10+）
+# Install dependencies (Python 3.10 or later)
 pip install -r backend/requirements.txt
 
-# 2. 配置（填入 LLM API key）
+# Create your configuration and fill in the API key for one provider
 cp backend/.env.example backend/.env
 
-# 3. 启动（Swagger: http://127.0.0.1:8000/docs）
+# Start the API. Swagger UI is served at http://127.0.0.1:8000/docs
 uvicorn backend.main:app --reload --port 8000
 ```
 
-### 前端
+### App
 
 ```bash
 cd app
 flutter pub get
 flutter run
-# 构建真机 APK（后端地址通过 --dart-define 注入）
-flutter build apk --dart-define=API_BASE_URL=http://<你的后端地址>:8000
+
+# Point a release build at your backend
+flutter build apk --dart-define=API_BASE_URL=http://<your-host>:8000
 ```
 
-## 🧠 Agent 怎么工作
+## How It Works
 
-一次「帮我复习操作系统第三章」：
+A request such as "help me revise chapter three of my operating systems notes" runs through four stages.
 
-1. **Planner** 生成执行计划（建议非强制）
-2. **ReAct 循环**：LLM 每轮输出 JSON 决策（思考/工具/参数）→ 引擎调度工具 → 观察结果回填上下文 → 继续
-3. 工具链：`search_notes` 检索相关笔记 → `generate_summary` 建立认知 → `create_quiz` 出题自测 → `explain_concept` 解释薄弱概念
-4. **记忆更新**：作答结果回流到知识掌握状态（mastery / 薄弱点）
-5. **评测落库**：任务完成率、工具成功率、平均延迟等指标
+1. The planner turns the goal into an ordered list of steps. The plan is advisory: the agent may deviate, and the deviation rate is measured.
+2. The ReAct loop asks the model for one decision per turn in JSON: what it is thinking, which tool to call, and with which parameters. The engine runs that tool, appends the observation to the conversation, and asks again.
+3. Tools chain naturally. `search_notes` finds the relevant notes, `generate_summary` builds an overview, `create_quiz` produces questions, and `explain_concept` covers whatever the quiz exposed.
+4. Results are written back: mastery levels and weak points are updated, and the evaluation record for the session is stored.
 
-## 🔌 API 概览
+The loop is bounded. A session runs at most 15 steps, tool output is truncated to 2000 characters before it enters the context, sessions idle for more than 300 seconds are marked abandoned, and a failing tool call is returned to the model as an observation rather than crashing the run.
 
-| 模块 | 端点 |
+## Tech Stack
+
+| Layer | Technology |
 |---|---|
-| 认证 | POST /auth/register · /auth/login · GET /auth/me |
-| 笔记 | GET/POST /notes · GET/PUT/DELETE /notes/{id} · POST /notes/{id}/reindex |
-| 上传 | POST /upload（PDF/PPTX/MD，自动解析+向量化） |
-| Agent | POST /agent/sessions · /agent/sessions/{id}/chat · GET /agent/sessions · /{id}/eval |
-| 答题闭环 | POST /agent/sessions/{id}/answers |
+| Backend | Python 3.11, FastAPI, SQLAlchemy (async), SQLite in WAL mode |
+| Agent | ReAct loop, tool registry, three-layer memory, evaluation tracking |
+| Retrieval | ChromaDB, BGE-small-zh-v1.5 embeddings, overlapping chunker |
+| Models | Any OpenAI-compatible endpoint |
+| App | Flutter, Riverpod, go_router, Material 3 |
 
-详细契约见 [docs/api.md](docs/api.md)，架构设计见 [docs/frontend-architecture.md](docs/frontend-architecture.md)。
+## Documentation
 
-## 🧪 测试
+| Document | Description |
+|---|---|
+| [docs/api.md](docs/api.md) | Endpoints, payloads, and evaluation metrics |
+| [docs/frontend-architecture.md](docs/frontend-architecture.md) | App layering, dependency injection, theming, and the notes-to-assistant flow |
+
+## Configuration
+
+Settings live in `backend/.env`; `backend/.env.example` lists all of them with comments.
+
+| Variable | Description |
+|---|---|
+| `LLM_MODEL` | Which entry of the model registry to use |
+| `MODELSCOPE_API_KEY`, `MOONSHOT_API_KEY`, `NVIDIA_API_KEY` | Credentials for the provider you choose; fill in one |
+| `LLM_MIN_INTERVAL` | Minimum seconds between calls, a global override for providers with tight rate limits |
+| `MAX_STEPS` | Step ceiling for one session (default 15) |
+| `LLM_TEMPERATURE` | Sampling temperature (default 0.3) |
+| `JWT_SECRET` | Signing key for access tokens; change it before exposing the API |
+| `EMBEDDING_MODEL` | Local embedding model (default `BAAI/bge-small-zh-v1.5`) |
+| `CHUNK_SIZE`, `CHUNK_OVERLAP` | Document chunking parameters |
+
+## Contributing
+
+1. Fork the repository and create a branch: `git checkout -b feat/short-description`.
+2. Keep commits to [Conventional Commits](https://www.conventionalcommits.org/), one logical change per commit.
+3. Run the test suites before opening a pull request:
 
 ```bash
-# 后端（81 用例：认证/笔记/上传/RAG/工具/Agent 流程/限流/防御解析）
-cd backend && pytest -v
-
-# 前端（Widget 测试 + 单元测试）
+cd backend && pytest
 cd app && flutter test
 ```
 
-## 📄 文档
+4. Open the pull request and describe what changed and how you verified it.
 
-- [docs/api.md](docs/api.md) — 后端 API 契约
-- [docs/frontend-architecture.md](docs/frontend-architecture.md) — 前端架构（Riverpod/go_router/MD3/玻璃质感/思考过程展示）
+## License
 
-## ⚖️ License
-
-MIT
+MIT. See [LICENSE](LICENSE).
