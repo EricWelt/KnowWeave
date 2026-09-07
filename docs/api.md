@@ -1,74 +1,96 @@
-# KnowWeave 后端 API 文档
+English丨[简体中文](api.zh-Hans.md)
 
-> 基础地址：`http://localhost:8000`（Swagger: /docs）
-> 认证：除 `/auth/register`、`/auth/login` 外，均需请求头 `Authorization: Bearer <token>`
+# KnowWeave API Reference
 
-## 认证 /auth
+> Base URL: `http://localhost:8000` · Interactive docs: `/docs`
+> Authentication: every endpoint except `/auth/register` and `/auth/login` requires the header `Authorization: Bearer <token>`.
 
-| 方法 | 路径 | 说明 |
+## Authentication
+
+| Method | Path | Description |
 |---|---|---|
-| POST | /auth/register | {`username`, `password`} → 201 |
-| POST | /auth/login | {`username`, `password`} → {`token`, `user_id`, `username`} |
-| GET | /auth/me | → {`id`, `username`, `created_at`} |
+| POST | `/auth/register` | `{username, password}` → `201` |
+| POST | `/auth/login` | `{username, password}` → `{token, user_id, username}` |
+| GET | `/auth/me` | → `{id, username, created_at}` |
 
-## 笔记 /notes
+## Notes
 
-| 方法 | 路径 | 说明 |
+| Method | Path | Description |
 |---|---|---|
-| GET | /notes?search= | 笔记列表（标题模糊搜索） |
-| POST | /notes | {`title`, `content`} → 201（自动向量化） |
-| GET | /notes/{id} | 笔记详情 |
-| PUT | /notes/{id} | {`title?`, `content?`}（自动重建索引） |
-| DELETE | /notes/{id} | 删除（含向量清理） |
-| POST | /notes/{id}/reindex | 手动重建索引 |
+| GET | `/notes?search=` | List notes; `search` matches the title |
+| POST | `/notes` | `{title, content}` → `201`, indexed on creation |
+| GET | `/notes/{id}` | One note |
+| PUT | `/notes/{id}` | `{title?, content?}`, reindexes automatically |
+| DELETE | `/notes/{id}` | Deletes the note and its vectors |
+| POST | `/notes/{id}/reindex` | Rebuilds the index for one note |
 
-笔记字段：`id`(UUID) `title` `content` `source_type`(manual/pdf/pptx/markdown) `source_name` `created_at` `updated_at`
+A note has the fields `id` (UUID), `title`, `content`, `source_type` (`manual` / `pdf` / `pptx` / `markdown`), `source_name`, `created_at`, and `updated_at`.
 
-## Agent /agent
+## Agent
 
-| 方法 | 路径 | 说明 |
+| Method | Path | Description |
 |---|---|---|
-| POST | /agent/sessions | {`goal`} → 201 {`session_id`, `summary`, `plan`, `steps`, `eval`, `weak_points`, `conversation`} |
-| POST | /agent/sessions/{id}/chat | {`message`} → {`session_id`, `reply`, `conversation`} |
-| GET | /agent/sessions | 会话列表 |
-| GET | /agent/sessions/{id} | 会话详情（含完整对话） |
-| GET | /agent/sessions/{id}/eval | 评测报告 {`metrics`, `details`} |
+| POST | `/agent/sessions` | `{goal}` → `201` with `{session_id, summary, plan, steps, eval, weak_points, conversation}` |
+| POST | `/agent/sessions/{id}/chat` | `{message}` → `{session_id, reply, conversation}` |
+| POST | `/agent/sessions/{id}/answers` | Quiz answers, see below |
+| GET | `/agent/sessions` | Session list |
+| GET | `/agent/sessions/{id}` | One session, including the full conversation |
+| GET | `/agent/sessions/{id}/eval` | Evaluation report `{metrics, details}` |
 
-### eval 指标
-- `task_completion_rate`：完成步骤/计划步骤
-- `tool_call_success_rate`：成功工具调用/总调用
-- `avg_latency_ms`：工具平均耗时
-- `plan_deviation_rate`：实际工具集与计划工具集的偏差
+Creating a session runs the full ReAct loop and returns once the agent has produced its final answer, so this call can take a while. Continuing a session with `/chat` runs another loop over the same conversation.
 
-## 文件上传 /upload
+### Evaluation metrics
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | /upload | multipart `file`（pdf/pptx/md）→ 201 {`note_id`, `title`} |
+| Metric | Definition |
+|---|---|
+| `task_completion_rate` | Steps completed over steps planned |
+| `tool_call_success_rate` | Successful tool calls over total tool calls |
+| `avg_latency_ms` | Mean wall-clock time per tool call |
+| `plan_deviation_rate` | Distance between the tools actually used and the tools the plan named |
 
+### Quiz answers
 
-| POST | /agent/sessions/{id}/answers | 提交选择题作答 → 更新知识掌握状态 |
+Submitting answers updates the long-term memory for the notes involved. This is what closes the study loop: the next session starts from an updated mastery level and a fresh list of weak points.
 
-### 答题闭环 /answers
+Request:
 
-请求：
 ```json
-{"answers": [{"question": "...", "selected": "A. x", "correct": "A. x", "is_correct": true}]}
+{"answers": [{"question": "...", "selected": "A. ...", "correct": "A. ...", "is_correct": true}]}
 ```
-响应：{"session_id", "correct", "total", "mastery_level", "weak_points"}
 
-## Agent 工具清单
+Response: `{"session_id", "correct", "total", "mastery_level", "weak_points"}`
 
-| 工具 | 用途 | 关键参数 |
+## File upload
+
+| Method | Path | Description |
 |---|---|---|
-| search_notes | 向量检索笔记 | query |
-| generate_summary | 摘要+关键概念+复习重点 | note_ids |
-| create_quiz | 生成选择题 | note_ids, count |
-| cross_reference | 跨笔记关联 | note_id |
-| explain_concept | 费曼解释概念 | concept |
+| POST | `/upload` | `multipart/form-data` with a `file` field (`.pdf`, `.pptx`, `.md`) → `201` `{note_id, title}` |
 
-## 配置（.env）
+The file is parsed, chunked, embedded, and stored as a note in one request.
 
-`LLM_PROVIDER`（modelscope|moonshot）、`MODELSCOPE_API_KEY`、`MOONSHOT_API_KEY`、
-`MODELSCOPE_MODEL`、`MOONSHOT_MODEL`、`MAX_STEPS`、`LLM_TEMPERATURE`、
-`JWT_SECRET`、`EMBEDDING_MODEL`、`CHUNK_SIZE` 等，详见 `backend/.env.example`。
+## Tools
+
+These are the tools the agent can call. The model sees the descriptions and parameter schemas, and picks one per turn.
+
+| Tool | Purpose | Parameters |
+|---|---|---|
+| `search_notes` | Vector search across notes | `query` |
+| `generate_summary` | Summary, key concepts, and review points | `note_ids` |
+| `create_quiz` | Multiple-choice questions | `note_ids`, `count` |
+| `cross_reference` | Relationship between two notes | `note_id` |
+| `explain_concept` | Plain-language explanation of a concept | `concept` |
+
+## Configuration
+
+All settings are read from `backend/.env`; see `backend/.env.example` for the annotated list.
+
+| Variable | Description |
+|---|---|
+| `LLM_MODEL` | Registry key selecting the model to use |
+| `LLM_PROVIDER` | Legacy fallback used when `LLM_MODEL` is unset |
+| `MODELSCOPE_API_KEY`, `MOONSHOT_API_KEY`, `NVIDIA_API_KEY` | Provider credentials |
+| `LLM_MIN_INTERVAL` | Global minimum interval between calls, in seconds; `0` uses each model's own interval |
+| `MAX_STEPS`, `LLM_TEMPERATURE`, `TOOL_OUTPUT_MAX_CHARS`, `SESSION_TIMEOUT_SECONDS` | Agent loop limits |
+| `JWT_SECRET`, `JWT_EXPIRE_MINUTES` | Token signing and lifetime |
+| `EMBEDDING_MODEL`, `CHUNK_SIZE`, `CHUNK_OVERLAP` | Retrieval settings |
+| `DATABASE_PATH`, `CHROMA_PATH` | Optional storage overrides |

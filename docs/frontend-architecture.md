@@ -1,142 +1,142 @@
-# KnowWeave 前端架构文档（）
+English丨[简体中文](frontend-architecture.zh-Hans.md)
 
-> 版本：v2.0 | 配套后端：FastAPI + ReAct Agent（见 docs/api.md）
+# KnowWeave App Architecture
 
-## 1. 技术栈
+> Version 2.0 · Talks to the FastAPI backend and ReAct agent described in [api.md](api.md).
 
-| 层 | 选型 | 理由 |
+## 1. Stack
+
+| Layer | Choice | Why |
 |---|---|---|
-| UI | Flutter + Material 3 | 三端一致（Android/iOS/Web），MD3 原生支持 |
-| 状态管理 | flutter_riverpod 2.x | 编译期安全、可测试、可注入（替代裸 setState） |
-| 路由 | go_router 14.x | 声明式路由 + auth 重定向 + 深链 |
-| 网络 | http + 自研 ApiClient | 轻量；注入 http.Client 便于 mock 测试 |
-| 存储 | shared_preferences | JWT / 主题模式持久化 |
-| 动画 | 系统动画 + 玻璃质感点缀 | 见「视觉规范」 |
-| 文件 | file_picker | PDF/PPTX/MD 导入 |
+| UI | Flutter with Material 3 | One codebase for Android, iOS, and web, with first-class Material 3 support |
+| State | flutter_riverpod 2.x | Compile-time safe, testable, injectable; replaces ad-hoc `setState` |
+| Routing | go_router 14.x | Declarative routes, auth redirects, deep links |
+| Network | `http` behind a small `ApiClient` | Lightweight, and the underlying `http.Client` can be swapped for a mock in tests |
+| Storage | shared_preferences | Persists the JWT and the theme mode |
+| Files | file_picker | Imports PDF, PPTX, and Markdown |
 
-## 2. 目录结构
+## 2. Layout
 
 ```
 lib/
-├── main.dart                    # 入口：ProviderScope + MaterialApp.router + 主题模式
-├── core/                        # 与业务无关的基础设施
-│   ├── config/app_config.dart   # --dart-define 可覆盖的后端地址
+├── main.dart                    # Entry point: ProviderScope, MaterialApp.router, theme mode
+├── core/                        # Infrastructure, no business logic
+│   ├── config/app_config.dart   # Backend URL, overridable with --dart-define
 │   ├── network/
-│   │   ├── api_client.dart      # 统一 HTTP：Bearer/UTF-8/错误映射（可注入）
-│   │   └── api_exception.dart   # 带 statusCode 的统一异常
-│   ├── storage/token_store.dart # JWT + 用户信息
-│   ├── router/app_router.dart   # go_router：底栏三页 Shell + auth 重定向
-│   ├── widgets/shell_screen.dart  # 底栏外壳（笔记/AI 助手/我的）
-│   ├── theme/app_theme.dart     # MD3 亮/暗主题 + 组件主题 + 转场
+│   │   ├── api_client.dart      # Bearer token, UTF-8 decoding, error mapping
+│   │   └── api_exception.dart   # One exception type carrying the status code
+│   ├── storage/token_store.dart # JWT and the signed-in user
+│   ├── router/app_router.dart   # go_router: three-tab shell plus auth redirects
+│   ├── theme/app_theme.dart     # Material 3 light and dark themes, component themes, transitions
 │   ├── widgets/
-│   │   ├── glass.dart           # 玻璃质感组件（性能安全的小面积模糊）
-│   │   ├── markdown_view.dart   # 全 App 唯一 Markdown+LaTeX 渲染
-│   │   └── status_views.dart    # Loading/Empty/Error 统一组件
-│   └── providers.dart           # prefs / tokenStore / apiClient 全局注入点
-├── features/                    # 按业务域分模块（高内聚）
-│   ├── auth/                    # 认证
-│   │   ├── auth_repository.dart # 登录/注册（调 ApiClient）
-│   │   ├── auth_provider.dart   # AuthState + 登录/登出/自动恢复
-│   │   └── screens/             # login / register
-│   ├── notes/                   # 笔记
-│   │   ├── note_model.dart      # Note（与后端 NoteOut 对齐）
-│   │   ├── note_repository.dart # CRUD + reindex + upload
-│   │   ├── note_provider.dart   # AsyncNotifier 列表状态
-│   │   └── screens/             # list / edit
-│   └── agent/                   # AI 助手
-│       ├── models/agent_models.dart  # 会话/步骤/评测/题目/作答 模型
-│       ├── agent_repository.dart     # /agent/* + /answers
-│       ├── agent_provider.dart       # 对话状态机 + 题目提取（修复版）
-│       └── screens/
-│           ├── agent_chat_screen.dart
-│           └── widgets/
-│               ├── chat_bubble.dart  # 气泡/工具卡/题目卡/结果卡
-│               └── quiz_card.dart    # 可交互选择题 + 作答上报
+│   │   ├── shell_screen.dart    # Bottom navigation shell (notes, assistant, profile)
+│   │   ├── glass.dart           # Frosted-glass surfaces, blurred in small areas only
+│   │   ├── markdown_view.dart   # The single Markdown and LaTeX renderer
+│   │   └── status_views.dart    # Shared loading, empty, and error views
+│   └── providers.dart           # Where prefs, token store, and API client are injected
+├── features/                    # One folder per business domain
+│   ├── auth/
+│   │   ├── auth_repository.dart # Login and registration calls
+│   │   ├── auth_provider.dart   # Auth state, sign-in, sign-out, session restore
+│   │   └── screens/             # login, register
+│   ├── notes/
+│   │   ├── note_model.dart      # Note, mirroring the backend schema
+│   │   ├── note_repository.dart # CRUD, reindex, upload
+│   │   ├── note_provider.dart   # AsyncNotifier holding the list state
+│   │   └── screens/             # list, edit
+│   ├── agent/
+│   │   ├── models/agent_models.dart  # Session, step, evaluation, quiz, and answer models
+│   │   ├── agent_repository.dart     # /agent/* and /answers
+│   │   ├── agent_provider.dart       # Conversation state machine and quiz extraction
+│   │   └── screens/
+│   │       ├── agent_chat_screen.dart
+│   │       └── widgets/
+│   │           ├── chat_bubble.dart  # Bubbles, tool cards, quiz cards, result cards
+│   │           └── quiz_card.dart    # Interactive questions that report answers back
+│   └── profile/                      # Account, appearance, sign-out
 └── test/
-    ├── unit/       # 纯逻辑（题目提取等）
-    └── widget/     # MockClient 注入的 UI 流程测试
-
-> 新增：features/profile/（「我的」页：账号/外观/退出）
+    ├── unit/       # Pure logic
+    └── widget/     # UI flows with a mocked HTTP client
 ```
 
-## 3. 依赖注入与可测试性（核心设计）
+## 3. Dependency Injection and Testability
 
-**规则：任何 IO（HTTP/存储）都通过可注入抽象，测试用替身替换。**
+The rule is that any I/O, whether HTTP or storage, goes through an injectable abstraction, and tests substitute a stand-in.
 
 ```dart
-// core/providers.dart —— 全局注入点
+// core/providers.dart
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient(
-  client: http.Client(),                      // ← 测试改为 MockClient
+  client: http.Client(),                      // replaced with MockClient in tests
   tokenStore: ref.watch(tokenStoreProvider),
 ));
 
-// 测试：override 注入假客户端
+// in a test
 apiClientProvider.overrideWithValue(
   ApiClient(client: MockClient(...), tokenStore: ..., baseUrl: 'http://test'),
 );
 ```
 
-分层调用链：`Screen → Provider(状态) → Repository(数据) → ApiClient(HTTP)`。
-每层只依赖下层接口 → 每层都可单独测试。
+Calls flow screen → provider (state) → repository (data) → `ApiClient` (HTTP). Each layer depends only on the one below it, so each can be tested on its own.
 
-## 3.5 底栏三页（Shell）与页面职责
+## 4. The Three Tabs
 
-- **笔记**：列表 + 导入（顶栏仅保留导入按钮）
-- **AI 助手**：对话 + 思考过程展示 + 历史会话（独立底栏页）
-- **我的**：账号信息 + 外观（亮/暗/跟随系统）+ 退出登录
+- **Notes**: the list plus import; the app bar keeps only the import action.
+- **Assistant**: the conversation, the reasoning trace, and past sessions, on its own tab.
+- **Profile**: account information, appearance (light, dark, or system), and sign-out.
 
-跨页上下文（笔记 → AI）：`agentDraftGoalProvider` 携带「围绕笔记《X》帮我复习」草稿目标，
-切到 AI 页自动消费发送。
+Cross-tab context: opening the assistant from a note seeds `agentDraftGoalProvider` with a goal such as "help me revise <note title>", which the chat screen consumes and sends automatically.
 
-## 4. 状态管理约定
+## 5. State Management Conventions
 
-- **全局状态**（登录态、主题模式）用 `Notifier`；
-- **异步数据**（笔记列表）用 `AsyncNotifier`（自带 loading/error/data 三态）；
-- **对话状态机**用 `Notifier`（消息列表 + sessionId + loading）；
-- 页面内局部 UI 状态（输入框、预览开关）保留 `setState`。
+- Global state such as the signed-in user and the theme mode uses a `Notifier`.
+- Asynchronous data such as the note list uses an `AsyncNotifier`, which carries loading, error, and data states.
+- The conversation uses a `Notifier` holding the message list, the session id, and a loading flag.
+- Purely local UI state, such as a text field or a preview toggle, stays with `setState`.
 
-## 5. 视觉规范（MD3 + 玻璃点缀）
+## 6. Visual Language
 
-### 5.1 配色
-- 品牌种子色 `teal #00897B`，`ColorScheme.fromSeed` 生成全套；
-- 亮/暗两套 `ThemeData`，`themeMode` 持久化（system/light/dark）；
-- 组件级主题统一：AppBar 半透明、卡片圆角 16、输入框填充式、按钮圆角 14。
+### 6.1 Color
 
-### 5.2 玻璃质感（克制原则）
-- 只在 **AppBar 背景 / 登录注册卡片** 使用 `BackdropFilter`；
-- 双层效果：半透明底色 + 1px 白色高光描边；
-- `Glass.enabled = false` 可全局关闭（低端机兜底）。
+- The seed color is teal `#00897B`; `ColorScheme.fromSeed` derives the full palette.
+- Separate light and dark `ThemeData`; the mode is persisted as system, light, or dark.
+- Component themes are set centrally: a translucent app bar, cards with a 16 radius, filled text fields, and buttons with a 14 radius.
 
-### 5.3 动效
-- 页面转场：MD3 fade-through（`FadeForwardsPageTransitionsBuilder`）；
-- 聊天气泡、列表项进出场动画；
-- 主题切换动画（MaterialApp 内置）；
-- AI 思考中：三个错相脉动的圆点 + 「AI 思考中…」（`ThinkingIndicator`）；
-- 思考过程：回答附带可折叠的「思考过程」卡片（think 文本 + 工具调用），类似 LLM 深度思考展示。
+### 6.2 Frosted glass, used sparingly
 
-## 6. 后端契约速查
+- `BackdropFilter` appears only on the app bar and the sign-in cards.
+- The effect is a translucent fill plus a one-pixel light stroke.
+- `Glass.enabled = false` turns it off globally for slower devices.
 
-| 前端调用 | 端点 |
+### 6.3 Motion
+
+- Page transitions use the Material 3 fade-through builder.
+- Chat bubbles and list items animate in and out.
+- The thinking indicator is three pulsing dots with an "assistant is thinking" label.
+- Finished answers can expand a collapsed reasoning card showing the model's thoughts and the tool calls of that turn.
+
+## 7. Backend Contract
+
+| What the app calls | Endpoint |
 |---|---|
-| 登录/注册 | POST /auth/login、/auth/register |
-| 笔记列表/详情/增删改/重建索引 | GET/POST /notes、GET/PUT/DELETE /notes/{id}、POST /notes/{id}/reindex |
-| 导入 | POST /upload (multipart) |
-| 发起/继续 Agent 会话 | POST /agent/sessions、/agent/sessions/{id}/chat |
-| 会话列表/详情/评测 | GET /agent/sessions、/{id}、/{id}/eval |
-| **答题闭环** | **POST /agent/sessions/{id}/answers** |
+| Sign in and register | `POST /auth/login`, `POST /auth/register` |
+| Note list, detail, create, update, delete, reindex | `GET/POST /notes`, `GET/PUT/DELETE /notes/{id}`, `POST /notes/{id}/reindex` |
+| Import | `POST /upload` (multipart) |
+| Start and continue a session | `POST /agent/sessions`, `POST /agent/sessions/{id}/chat` |
+| Session list, detail, evaluation | `GET /agent/sessions`, `/agent/sessions/{id}`, `/agent/sessions/{id}/eval` |
+| Quiz answers | `POST /agent/sessions/{id}/answers` |
 
-完整字段见 `docs/api.md`。
+Field-level detail lives in [api.md](api.md).
 
-## 7. 真机联调
+## 8. Running Against a Device
 
-1. PC 与手机同一 WiFi；
-2. 后端：`uvicorn backend.main:app --host 0.0.0.0 --port 8000`；
-3. 前端：`flutter build apk --dart-define=API_BASE_URL=http://<PC局域网IP>:8000`；
-4. Android release 已配置 INTERNET 权限 + cleartext（manifest）；iOS 已配置 ATS NSAllowsLocalNetworking。
+1. Put the computer and the phone on the same network.
+2. Start the backend: `uvicorn backend.main:app --host 0.0.0.0 --port 8000`.
+3. Build the app with the computer's address: `flutter build apk --dart-define=API_BASE_URL=http://<host>:8000`.
+4. Android release builds declare the INTERNET permission and allow cleartext traffic; iOS declares an ATS local networking exception.
 
-## 8. 已知取舍与后续 TODO
+## 9. Known Trade-offs and Open Work
 
-- [ ] 登录后自动刷新笔记（当前页面进入时加载）
-- [ ] Agent 流式输出（SSE）
-- [ ] 文件导入的 Web 端（file_picker web 需 bytes 处理）
-- [ ] 会话消息虚拟化（长对话性能）
+- [ ] Refresh the note list after sign-in; today it loads when the screen opens.
+- [ ] Stream assistant replies with SSE.
+- [ ] File import on the web, which needs byte handling in file_picker.
+- [ ] Virtualize long conversations.
