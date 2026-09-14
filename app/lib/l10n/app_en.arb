@@ -1,0 +1,202 @@
+{
+  "@@locale": "en",
+  "loginSubtitle": "KnowWeave · your AI study assistant",
+  "usernameLabel": "Username",
+  "passwordLabel": "Password",
+  "loginButton": "Log in",
+  "noAccountRegister": "No account? Create one",
+  "loginMissingFields": "Enter your username and password",
+  "registerTitle": "Create account",
+  "passwordMinLabel": "Password (at least 8 characters)",
+  "confirmPasswordLabel": "Confirm password",
+  "registerButton": "Sign up",
+  "usernameTooShort": "Username must be at least 3 characters",
+  "passwordTooShort": "Password must be at least 8 characters",
+  "passwordMismatch": "The passwords do not match",
+  "registerSuccess": "Account created. Please sign in.",
+  "notesTitle": "My notes",
+  "importFile": "Import file",
+  "importSuccess": "Imported (ID: {id})",
+  "@importSuccess": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "importFailed": "Import failed: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "loadingNotes": "Loading notes…",
+  "emptyNotes": "No notes yet",
+  "emptyNotesHint": "Create one with the button below, or import a PDF, PPTX, or Markdown file",
+  "newNote": "New note",
+  "editNote": "Edit note",
+  "backToEditing": "Back to editing",
+  "markdownPreview": "Markdown preview",
+  "save": "Save",
+  "noteTitleHint": "Note title",
+  "noteContentHint": "Start writing in Markdown…",
+  "titleAndContentRequired": "Title and content cannot be empty",
+  "aiAssistantTooltip": "AI study assistant",
+  "reviewCurrentNote": "Help me revise this note",
+  "reviewNoteGoal": "Help me revise the note \"{title}\": search it first, summarize it, and quiz me on the key points.",
+  "@reviewNoteGoal": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "agentTitle": "AI study assistant",
+  "historyMenu": "Past sessions",
+  "agentWelcomeTitle": "Enter a study goal",
+  "agentWelcomeExample": "For example: \"Help me revise chapter three of my operating systems notes\"",
+  "agentWelcomeHint": "The agent plans on its own: search notes, summarize, quiz, explain concepts",
+  "agentInputHint": "Enter a goal or a question…",
+  "send": "Send",
+  "thinkingInProgress": "Thinking…",
+  "thinkingTitle": "Reasoning",
+  "thinkingStepCount": "{count} steps",
+  "@thinkingStepCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "toolCalled": "Called {tool}",
+  "@toolCalled": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "toolFailedSuffix": " (failed)",
+  "toolCallSummary": "Called {tool} · {summary}",
+  "@toolCallSummary": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      },
+      "summary": {
+        "type": "String"
+      }
+    }
+  },
+  "quizGenerated": "{count} questions generated",
+  "@quizGenerated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "quizFromHistory": "{count} questions from an earlier session",
+  "@quizFromHistory": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "errorSend": "Request failed: {error}",
+  "@errorSend": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorLoadHistory": "Could not load past sessions: {error}",
+  "@errorLoadHistory": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorSubmitAnswers": "Could not submit your answers: {error}",
+  "@errorSubmitAnswers": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "quizResultTitle": "Result",
+  "quizScore": "{correct}/{total}",
+  "@quizScore": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "masteryLevel": "Mastery: {percent}%",
+  "@masteryLevel": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "weakPoints": "Weak points: {points}",
+  "@weakPoints": {
+    "placeholders": {
+      "points": {
+        "type": "String"
+      }
+    }
+  },
+  "listSeparator": ", ",
+  "questionProgress": "Question {index} of {total}",
+  "@questionProgress": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "submitAnswers": "Submit answers",
+  "nextQuestion": "Next",
+  "navNotes": "Notes",
+  "navAgent": "Assistant",
+  "navProfile": "Profile",
+  "retry": "Retry",
+  "tapToRetry": "Tap to retry",
+  "requestFailed": "Request failed (HTTP {status})",
+  "@requestFailed": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "profileTitle": "Profile",
+  "notSignedIn": "Not signed in",
+  "profileSubtitle": "KnowWeave · AI-assisted study",
+  "appearanceSection": "Appearance",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeSystem": "System",
+  "languageSection": "Language",
+  "languageSystem": "System default",
+  "languageEnglish": "English",
+  "languageChineseSimplified": "简体中文",
+  "aboutSection": "About",
+  "aboutSubtitle": "KnowWeave · a ReAct agent for studying",
+  "signOut": "Sign out"
+}
