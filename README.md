@@ -75,6 +75,8 @@ flutter run
 flutter build apk --dart-define=API_BASE_URL=http://<your-host>:8000
 ```
 
+The interface follows the system language and can be switched between English and Simplified Chinese from the profile tab.
+
 ## How It Works
 
 A request such as "help me revise chapter three of my operating systems notes" runs through four stages.

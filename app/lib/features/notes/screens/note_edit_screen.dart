@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/markdown_view.dart';
 import '../../agent/agent_provider.dart';
@@ -68,7 +69,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     final title = _title.text.trim();
     final content = _content.text.trim();
     if (title.isEmpty || content.isEmpty) {
-      _snack('标题和内容不能为空');
+      _snack(context.l10n.titleAndContentRequired);
       return;
     }
     setState(() => _saving = true);
@@ -97,24 +98,27 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.noteId == null ? '新建笔记' : '编辑笔记'),
+        title: Text(widget.noteId == null
+            ? context.l10n.newNote
+            : context.l10n.editNote),
         actions: [
           IconButton(
             icon: Icon(_preview ? Icons.edit_document : Icons.remove_red_eye),
-            tooltip: _preview ? '返回编辑' : 'Markdown 预览',
+            tooltip: _preview
+                ? context.l10n.backToEditing
+                : context.l10n.markdownPreview,
             onPressed: () => setState(() => _preview = !_preview),
           ),
           IconButton(
             icon: const Icon(Icons.auto_awesome),
-            tooltip: 'AI 学习助手',
+            tooltip: context.l10n.aiAssistantTooltip,
             onPressed: () {
               // 带着「围绕当前笔记复习」的上下文切换到 AI 助手页
               final title = _title.text.trim();
-              ref.read(agentDraftGoalProvider.notifier).state =
-                  title.isEmpty
-                      ? '围绕当前笔记帮我复习'
-                      : '围绕笔记《$title》帮我复习：请先检索这篇笔记，生成摘要，'
-                          '并针对关键知识点出题检验掌握程度。';
+              final l10n = context.l10n;
+              ref.read(agentDraftGoalProvider.notifier).state = title.isEmpty
+                  ? l10n.reviewCurrentNote
+                  : l10n.reviewNoteGoal(title);
               context.go(AppRoutes.agent);
             },
           ),
@@ -129,7 +133,7 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                 )
               : IconButton(
                   icon: const Icon(Icons.check),
-                  tooltip: '保存',
+                  tooltip: context.l10n.save,
                   onPressed: _save,
                 ),
         ],
@@ -144,8 +148,9 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                   .textTheme
                   .titleLarge
                   ?.copyWith(fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                  hintText: '笔记标题', border: InputBorder.none),
+              decoration: InputDecoration(
+                  hintText: context.l10n.noteTitleHint,
+                  border: InputBorder.none),
             ),
             const Divider(height: 16),
             Expanded(
@@ -157,8 +162,9 @@ class _NoteEditScreenState extends ConsumerState<NoteEditScreen> {
                       expands: true,
                       textAlignVertical: TextAlignVertical.top,
                       style: TextStyle(color: scheme.onSurface, height: 1.6),
-                      decoration: const InputDecoration(
-                          hintText: '开始编写 Markdown…', border: InputBorder.none),
+                      decoration: InputDecoration(
+                          hintText: context.l10n.noteContentHint,
+                          border: InputBorder.none),
                     ),
             ),
           ],

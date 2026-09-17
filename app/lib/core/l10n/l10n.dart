@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../network/api_exception.dart';
 
 /// 界面语言选项。
 ///
@@ -28,4 +29,16 @@ enum AppLanguage {
 /// 取当前语言资源：`context.l10n.loginButton`
 extension L10nX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
+}
+
+/// 把异常转成可展示文案。
+///
+/// 后端返回的 `detail` 原样显示（服务端本地化在 Phase B 完成）；
+/// 没有 detail 时按 HTTP 状态码给出本地化文案。
+String describeApiError(BuildContext context, Object error) {
+  if (error is ApiException) {
+    if (error.message.isNotEmpty) return error.message;
+    return context.l10n.requestFailed(error.statusCode ?? 0);
+  }
+  return error.toString();
 }

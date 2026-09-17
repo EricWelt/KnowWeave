@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
+
 /// AI 思考中的动画指示：三个依次脉动的圆点 + 文案。
 class ThinkingIndicator extends StatefulWidget {
-  final String text;
-  const ThinkingIndicator({super.key, this.text = 'AI 思考中…'});
+  /// 自定义文案；为空时取当前语言的默认文案。
+  final String? text;
+
+  const ThinkingIndicator({super.key, this.text});
 
   @override
   State<ThinkingIndicator> createState() => _ThinkingIndicatorState();
@@ -57,7 +61,7 @@ class _ThinkingIndicatorState extends State<ThinkingIndicator>
               },
             ),
           const SizedBox(width: 10),
-          Text(widget.text,
+          Text(widget.text ?? context.l10n.thinkingInProgress,
               style: TextStyle(
                   fontSize: 13, color: scheme.onSurfaceVariant)),
         ],

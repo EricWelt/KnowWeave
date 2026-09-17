@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
+
 /// 居中加载指示
 class LoadingView extends StatelessWidget {
   final String? label;
@@ -78,13 +80,13 @@ class ErrorView extends StatelessWidget {
     return EmptyView(
       icon: Icons.cloud_off_outlined,
       message: message,
-      hint: onRetry == null ? null : '点击重试',
+      hint: onRetry == null ? null : context.l10n.tapToRetry,
       action: onRetry == null
           ? null
           : FilledButton.tonalIcon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('重试'),
+              label: Text(context.l10n.retry),
             ),
     );
   }

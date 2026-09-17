@@ -13,6 +13,13 @@ final agentRepositoryProvider = Provider<AgentRepository>(
   (ref) => AgentRepository(ref.watch(apiClientProvider)),
 );
 
+/// 判断一次工具调用是否失败。
+///
+/// 临时耦合：后端步骤摘要中的失败标记目前是中文（engine 写入「（失败: …）」），
+/// 因此这里只能做文本匹配。Phase B 会给步骤接口补上显式的 success 字段，
+/// 届时改为读取该字段，彻底去掉对文案的依赖。
+bool _stepFailed(String summary) => summary.contains('失败');
+
 /// 从后端会话中提取 create_quiz 的题目（修复版）：
 /// 工具返回格式为 [工具 create_quiz 返回]\n{"questions": [...]}。
 List<QuizQuestion>? extractQuizFromConversation(List<dynamic> conversation) {
@@ -103,7 +110,10 @@ class AgentChatNotifier extends Notifier<AgentChatState> {
     final message = text.trim();
     if (message.isEmpty || state.loading) return;
     state = state.copyWith(
-      messages: [...state.messages, ChatMessage(ChatMsgType.user, message)],
+      messages: [
+        ...state.messages,
+        ChatMessage(ChatMsgType.user, content: message),
+      ],
       loading: true,
     );
     try {
@@ -114,34 +124,35 @@ class AgentChatNotifier extends Notifier<AgentChatState> {
       final messages = [...state.messages];
 
       // 思考过程（think 文本 + 工具调用），可折叠展示
-      final thinking = <String>[];
+      final thinking = <ThinkingStep>[];
       for (final s in result.steps) {
         if (s.type == 'think' && s.summary.isNotEmpty) {
-          thinking.add(s.summary);
+          thinking.add(ThinkingStep(text: s.summary));
         } else if (s.type == 'act') {
-          final ok = s.summary.contains('失败') ? '（失败）' : '';
-          thinking.add('🔧 调用工具 ${s.tool ?? ''}$ok');
+          thinking.add(ThinkingStep(
+            toolName: s.tool,
+            failed: _stepFailed(s.summary),
+          ));
         }
       }
       if (thinking.isNotEmpty) {
-        messages.add(ChatMessage(ChatMsgType.thinking, '💭 思考过程',
-            thinkingSteps: thinking));
+        messages.add(
+            ChatMessage(ChatMsgType.thinking, thinkingSteps: thinking));
       }
 
       // 工具步骤卡片
       for (final s in result.steps) {
         if (s.type == 'act') {
           messages.add(ChatMessage(ChatMsgType.tool,
-              '调用了 ${s.tool ?? '工具'} · ${s.summary}'));
+              toolName: s.tool, toolSummary: s.summary));
         }
       }
       // 最终回答
-      messages.add(ChatMessage(ChatMsgType.assistant, result.summary));
+      messages.add(ChatMessage(ChatMsgType.assistant, content: result.summary));
       // 从会话中提取题目
       final quiz = extractQuizFromConversation(result.conversation);
       if (quiz != null) {
-        messages.add(ChatMessage(ChatMsgType.quiz, '📝 生成了 ${quiz.length} 道练习题',
-            questions: quiz));
+        messages.add(ChatMessage(ChatMsgType.quiz, questions: quiz));
       }
       state = state.copyWith(
         sessionId: result.sessionId,
@@ -153,7 +164,8 @@ class AgentChatNotifier extends Notifier<AgentChatState> {
       state = state.copyWith(
         messages: [
           ...state.messages,
-          ChatMessage(ChatMsgType.assistant, '⚠️ 调用失败：$e'),
+          ChatMessage(ChatMsgType.error,
+              content: e.toString(), errorKind: AgentErrorKind.send),
         ],
         loading: false,
       );
@@ -171,22 +183,22 @@ class AgentChatNotifier extends Notifier<AgentChatState> {
         final role = m['role']?.toString() ?? '';
         final content = m['content']?.toString() ?? '';
         if (role == 'user') {
-          messages.add(ChatMessage(ChatMsgType.user, content));
+          messages.add(ChatMessage(ChatMsgType.user, content: content));
         } else if (role == 'assistant') {
-          messages.add(ChatMessage(ChatMsgType.assistant, content));
+          messages.add(ChatMessage(ChatMsgType.assistant, content: content));
         }
       }
       final quiz = extractQuizFromConversation(conversation);
       if (quiz != null) {
-        messages.add(
-            ChatMessage(ChatMsgType.quiz, '📝 历史题目 ${quiz.length} 道', questions: quiz));
+        messages.add(ChatMessage(ChatMsgType.quiz, questions: quiz));
       }
       state = state.copyWith(messages: messages, loading: false);
     } catch (e) {
       state = state.copyWith(
           messages: [
             ...state.messages,
-            ChatMessage(ChatMsgType.assistant, '⚠️ 加载历史失败：$e'),
+            ChatMessage(ChatMsgType.error,
+                content: e.toString(), errorKind: AgentErrorKind.loadHistory),
           ],
           loading: false);
     }
@@ -201,18 +213,15 @@ class AgentChatNotifier extends Notifier<AgentChatState> {
       state = state.copyWith(
         messages: [
           ...state.messages,
-          ChatMessage(
-            ChatMsgType.quizResult,
-            '答题完成：${result.correct}/${result.total} 正确',
-            quizResult: result,
-          ),
+          ChatMessage(ChatMsgType.quizResult, quizResult: result),
         ],
       );
     } catch (e) {
       state = state.copyWith(
         messages: [
           ...state.messages,
-          ChatMessage(ChatMsgType.assistant, '⚠️ 提交作答失败：$e'),
+          ChatMessage(ChatMsgType.error,
+              content: e.toString(), errorKind: AgentErrorKind.submitAnswers),
         ],
       );
     }

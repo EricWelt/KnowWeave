@@ -14,6 +14,7 @@
 | 网络 | `http` + 自研 `ApiClient` | 轻量；底层 `http.Client` 可在测试中替换为 mock |
 | 存储 | shared_preferences | 持久化 JWT 与主题模式 |
 | 文件 | file_picker | 导入 PDF、PPTX、Markdown |
+| 本地化 | flutter_localizations + gen-l10n（ARB 资源） | 官方方案；英文与简体中文两套资源 |
 
 ## 2. 目录结构
 
@@ -22,6 +23,7 @@ lib/
 ├── main.dart                    # 入口：ProviderScope、MaterialApp.router、主题模式
 ├── core/                        # 基础设施，不含业务逻辑
 │   ├── config/app_config.dart   # 后端地址，可用 --dart-define 覆盖
+│   ├── l10n/l10n.dart           # AppLanguage 枚举与 context.l10n 便捷访问
 │   ├── network/
 │   │   ├── api_client.dart      # Bearer 令牌、UTF-8 解码、错误映射
 │   │   └── api_exception.dart   # 统一异常类型，携带状态码
@@ -53,7 +55,11 @@ lib/
 │   │       └── widgets/
 │   │           ├── chat_bubble.dart  # 气泡、工具卡、题目卡、结果卡
 │   │           └── quiz_card.dart    # 可交互题目，作答后回传
-│   └── profile/                      # 账号、外观、退出登录
+│   └── profile/                      # 账号、外观、语言、退出登录
+├── l10n/                             # ARB 资源与生成的查找代码
+│   ├── app_en.arb
+│   ├── app_zh.arb                    # 基语言，gen-l10n 要求存在
+│   └── app_zh_Hans.arb               # 简体中文
 └── test/
     ├── unit/       # 纯逻辑
     └── widget/     # 注入 mock HTTP 客户端的界面流程测试
@@ -82,13 +88,13 @@ apiClientProvider.overrideWithValue(
 
 - **笔记**：列表与导入，顶栏只保留导入按钮。
 - **AI 助手**：对话、思考过程展示、历史会话，独立占一个底栏页。
-- **我的**：账号信息、外观（亮色/暗色/跟随系统）、退出登录。
+- **我的**：账号信息、外观（亮色/暗色/跟随系统）、界面语言、退出登录。
 
 跨页上下文：从笔记页唤起助手时，`agentDraftGoalProvider` 会带上「围绕《笔记标题》帮我复习」这样的目标，对话页消费后自动发送。
 
 ## 5. 状态管理约定
 
-- 全局状态（登录态、主题模式）用 `Notifier`。
+- 全局状态（登录态、主题模式、界面语言）用 `Notifier`。
 - 异步数据（笔记列表）用 `AsyncNotifier`，自带 loading / error / data 三态。
 - 对话状态机用 `Notifier`，持有消息列表、sessionId 与加载标志。
 - 纯局部 UI 状态（输入框内容、预览开关）保留 `setState`。

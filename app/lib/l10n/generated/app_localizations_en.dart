@@ -159,16 +159,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String quizGenerated(int count) {
-    return '$count questions generated';
-  }
-
-  @override
-  String quizFromHistory(int count) {
-    return '$count questions from an earlier session';
-  }
-
-  @override
   String errorSend(String error) {
     return 'Request failed: $error';
   }
@@ -276,4 +266,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signOut => 'Sign out';
+
+  @override
+  String get toolLabel => 'tool';
 }

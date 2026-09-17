@@ -1,12 +1,44 @@
 // Agent 域模型集合。
 
 /// 会话消息类型
-enum ChatMsgType { user, assistant, tool, quiz, quizResult, thinking }
+enum ChatMsgType { user, assistant, tool, quiz, quizResult, thinking, error }
 
-/// 聊天消息（含可选载荷）
+/// 失败来源，决定错误提示的前缀文案。
+enum AgentErrorKind { send, loadHistory, submitAnswers }
+
+/// 思考过程里的一步：think 文本，或一次工具调用。
+///
+/// 用显式字段区分类型，而不是在字符串里塞 emoji 前缀——
+/// 文案需要随语言变化，类型判断不能依赖文案。
+class ThinkingStep {
+  /// think 步骤的文本（模型产出，原样展示）
+  final String? text;
+
+  /// 工具调用步骤的工具名
+  final String? toolName;
+
+  /// 该次工具调用是否失败
+  final bool failed;
+
+  const ThinkingStep({this.text, this.toolName, this.failed = false});
+
+  bool get isTool => toolName != null;
+}
+
+/// 聊天消息（含可选载荷）。
+///
+/// 模型层只保存结构化数据，展示文案在渲染时按当前语言生成。
 class ChatMessage {
   final ChatMsgType type;
+
+  /// user / assistant 的正文；error 类型存放错误详情。
   final String content;
+
+  /// 工具调用卡片：后端步骤摘要（Phase B 起由后端按语言返回）
+  final String? toolSummary;
+
+  /// 工具名；缺失时界面用 l10n.toolLabel 兜底
+  final String? toolName;
 
   /// 出题工具返回的题目
   final List<QuizQuestion>? questions;
@@ -14,11 +46,22 @@ class ChatMessage {
   /// 作答结果
   final QuizResult? quizResult;
 
-  /// 本轮 ReAct 的思考过程（think 步骤文本 + 工具调用）
-  final List<String>? thinkingSteps;
+  /// 本轮 ReAct 的思考过程（think 文本 + 工具调用）
+  final List<ThinkingStep>? thinkingSteps;
 
-  const ChatMessage(this.type, this.content,
-      {this.questions, this.quizResult, this.thinkingSteps});
+  /// error 类型的失败来源
+  final AgentErrorKind? errorKind;
+
+  const ChatMessage(
+    this.type, {
+    this.content = '',
+    this.toolSummary,
+    this.toolName,
+    this.questions,
+    this.quizResult,
+    this.thinkingSteps,
+    this.errorKind,
+  });
 }
 
 /// 选择题

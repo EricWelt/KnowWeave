@@ -84,11 +84,13 @@ class ApiClient {
         statusCode: resp.statusCode);
   }
 
+  /// 取后端返回的 detail；没有 detail 时返回空串，
+  /// 由界面按状态码给出本地化文案（见 core/l10n/l10n.dart 的 describeApiError）。
   String _extractDetail(String body, int statusCode) {
     try {
       final data = jsonDecode(body);
       if (data is Map && data['detail'] != null) return data['detail'].toString();
     } catch (_) {}
-    return '请求失败 (HTTP $statusCode)';
+    return '';
   }
 }

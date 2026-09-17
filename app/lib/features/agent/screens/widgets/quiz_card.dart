@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/l10n/l10n.dart';
 import '../../models/agent_models.dart';
 
 /// 可交互选择题卡片：逐题作答 → 展示解析 → 完成后提交结果。
@@ -51,6 +52,7 @@ class _QuizCardState extends State<QuizCard> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: Padding(
@@ -62,7 +64,9 @@ class _QuizCardState extends State<QuizCard> {
               children: [
                 Icon(Icons.quiz_outlined, color: scheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('练习题 ${_index + 1}/${widget.questions.length}',
+                Text(
+                    l10n.questionProgress(
+                        _index + 1, widget.questions.length),
                     style: const TextStyle(fontWeight: FontWeight.w600)),
               ],
             ),
@@ -116,7 +120,7 @@ class _QuizCardState extends State<QuizCard> {
                   color: scheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('💡 ${_q.explanation}',
+                child: Text(_q.explanation,
                     style: TextStyle(
                         fontSize: 13, height: 1.5, color: scheme.onSurfaceVariant)),
               ),
@@ -126,8 +130,8 @@ class _QuizCardState extends State<QuizCard> {
                 child: FilledButton(
                   onPressed: _next,
                   child: Text(_index == widget.questions.length - 1
-                      ? '提交作答'
-                      : '下一题'),
+                      ? l10n.submitAnswers
+                      : l10n.nextQuestion),
                 ),
               ),
             ],

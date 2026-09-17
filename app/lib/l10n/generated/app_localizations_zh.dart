@@ -156,16 +156,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String quizGenerated(int count) {
-    return '生成了 $count 道练习题';
-  }
-
-  @override
-  String quizFromHistory(int count) {
-    return '历史题目 $count 道';
-  }
-
-  @override
   String errorSend(String error) {
     return '调用失败：$error';
   }
@@ -273,6 +263,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get signOut => '退出登录';
+
+  @override
+  String get toolLabel => '工具';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -427,16 +420,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   }
 
   @override
-  String quizGenerated(int count) {
-    return '生成了 $count 道练习题';
-  }
-
-  @override
-  String quizFromHistory(int count) {
-    return '历史题目 $count 道';
-  }
-
-  @override
   String errorSend(String error) {
     return '调用失败：$error';
   }
@@ -544,4 +527,7 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get signOut => '退出登录';
+
+  @override
+  String get toolLabel => '工具';
 }

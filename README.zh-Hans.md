@@ -75,6 +75,8 @@ flutter run
 flutter build apk --dart-define=API_BASE_URL=http://<你的后端地址>:8000
 ```
 
+界面默认跟随系统语言，可在「我的」页在英文与简体中文之间切换。
+
 ## 工作原理
 
 一次「帮我复习操作系统第三章」的请求会经历四个阶段。

@@ -14,6 +14,7 @@ English丨[简体中文](frontend-architecture.zh-Hans.md)
 | Network | `http` behind a small `ApiClient` | Lightweight, and the underlying `http.Client` can be swapped for a mock in tests |
 | Storage | shared_preferences | Persists the JWT and the theme mode |
 | Files | file_picker | Imports PDF, PPTX, and Markdown |
+| Localization | flutter_localizations with gen-l10n and ARB resources | Official tooling; English and Simplified Chinese |
 
 ## 2. Layout
 
@@ -22,6 +23,7 @@ lib/
 ├── main.dart                    # Entry point: ProviderScope, MaterialApp.router, theme mode
 ├── core/                        # Infrastructure, no business logic
 │   ├── config/app_config.dart   # Backend URL, overridable with --dart-define
+│   ├── l10n/l10n.dart           # AppLanguage enum and the context.l10n shorthand
 │   ├── network/
 │   │   ├── api_client.dart      # Bearer token, UTF-8 decoding, error mapping
 │   │   └── api_exception.dart   # One exception type carrying the status code
@@ -53,7 +55,11 @@ lib/
 │   │       └── widgets/
 │   │           ├── chat_bubble.dart  # Bubbles, tool cards, quiz cards, result cards
 │   │           └── quiz_card.dart    # Interactive questions that report answers back
-│   └── profile/                      # Account, appearance, sign-out
+│   └── profile/                      # Account, appearance, language, sign-out
+├── l10n/                             # ARB resources and generated lookups
+│   ├── app_en.arb
+│   ├── app_zh.arb                    # base locale, required by gen-l10n
+│   └── app_zh_Hans.arb               # Simplified Chinese
 └── test/
     ├── unit/       # Pure logic
     └── widget/     # UI flows with a mocked HTTP client
@@ -82,13 +88,13 @@ Calls flow screen → provider (state) → repository (data) → `ApiClient` (HT
 
 - **Notes**: the list plus import; the app bar keeps only the import action.
 - **Assistant**: the conversation, the reasoning trace, and past sessions, on its own tab.
-- **Profile**: account information, appearance (light, dark, or system), and sign-out.
+- **Profile**: account information, appearance (light, dark, or system), interface language, and sign-out.
 
 Cross-tab context: opening the assistant from a note seeds `agentDraftGoalProvider` with a goal such as "help me revise <note title>", which the chat screen consumes and sends automatically.
 
 ## 5. State Management Conventions
 
-- Global state such as the signed-in user and the theme mode uses a `Notifier`.
+- Global state such as the signed-in user, the theme mode, and the interface language uses a `Notifier`.
 - Asynchronous data such as the note list uses an `AsyncNotifier`, which carries loading, error, and data states.
 - The conversation uses a `Notifier` holding the message list, the session id, and a loading flag.
 - Purely local UI state, such as a text field or a preview toggle, stays with `setState`.

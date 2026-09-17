@@ -369,18 +369,6 @@ abstract class AppLocalizations {
   /// **'Called {tool} · {summary}'**
   String toolCallSummary(String tool, String summary);
 
-  /// No description provided for @quizGenerated.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} questions generated'**
-  String quizGenerated(int count);
-
-  /// No description provided for @quizFromHistory.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} questions from an earlier session'**
-  String quizFromHistory(int count);
-
   /// No description provided for @errorSend.
   ///
   /// In en, this message translates to:
@@ -566,6 +554,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out'**
   String get signOut;
+
+  /// No description provided for @toolLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'tool'**
+  String get toolLabel;
 }
 
 class _AppLocalizationsDelegate

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/glass.dart';
 import '../../../core/widgets/status_views.dart';
@@ -14,6 +15,7 @@ class NoteListScreen extends ConsumerWidget {
 
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     try {
       final result = await FilePicker.platform.pickFiles(
         allowedExtensions: ['pdf', 'pptx', 'md'],
@@ -23,9 +25,11 @@ class NoteListScreen extends ConsumerWidget {
       final file = result.files.first;
       final noteId =
           await ref.read(notesProvider.notifier).uploadFile(file.path!, file.name);
-      messenger.showSnackBar(SnackBar(content: Text('导入成功 (ID: $noteId)')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l10n.importSuccess(noteId))));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('导入失败：$e')));
+      messenger.showSnackBar(
+          SnackBar(content: Text(l10n.importFailed('$e'))));
     }
   }
 
@@ -34,28 +38,28 @@ class NoteListScreen extends ConsumerWidget {
     final notes = ref.watch(notesProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('我的笔记'),
+        title: Text(context.l10n.notesTitle),
         actions: [
           // 导入文件（笔记域操作，留在笔记页）
           IconButton(
             icon: const Icon(Icons.upload_file_outlined),
-            tooltip: '导入文件',
+            tooltip: context.l10n.importFile,
             onPressed: () => _pickAndUpload(context, ref),
           ),
         ],
         flexibleSpace: Glass.appBarBackground(context),
       ),
       body: notes.when(
-        loading: () => const LoadingView(label: '加载笔记中…'),
+        loading: () => LoadingView(label: context.l10n.loadingNotes),
         error: (e, _) => ErrorView(
-          message: e.toString(),
+          message: describeApiError(context, e),
           onRetry: () => ref.read(notesProvider.notifier).reload(),
         ),
         data: (list) => list.isEmpty
-            ? const EmptyView(
+            ? EmptyView(
                 icon: Icons.note_add_outlined,
-                message: '还没有笔记',
-                hint: '点击右下角创建，或右上角导入 PDF/PPTX/Markdown',
+                message: context.l10n.emptyNotes,
+                hint: context.l10n.emptyNotesHint,
               )
             : RefreshIndicator(
                 onRefresh: () => ref.read(notesProvider.notifier).reload(),
@@ -73,7 +77,7 @@ class NoteListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.noteEdit()),
         icon: const Icon(Icons.add),
-        label: const Text('新建笔记'),
+        label: Text(context.l10n.newNote),
       ),
     );
   }

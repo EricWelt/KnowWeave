@@ -90,22 +90,6 @@
       }
     }
   },
-  "quizGenerated": "{count} questions generated",
-  "@quizGenerated": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "quizFromHistory": "{count} questions from an earlier session",
-  "@quizFromHistory": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "errorSend": "Request failed: {error}",
   "@errorSend": {
     "placeholders": {
@@ -198,5 +182,6 @@
   "languageChineseSimplified": "简体中文",
   "aboutSection": "About",
   "aboutSubtitle": "KnowWeave · a ReAct agent for studying",
-  "signOut": "Sign out"
+  "signOut": "Sign out",
+  "toolLabel": "tool"
 }

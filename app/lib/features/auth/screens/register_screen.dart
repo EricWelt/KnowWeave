@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/widgets/glass.dart';
 import '../auth_provider.dart';
 
@@ -29,15 +30,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _submit() async {
     final user = _username.text.trim();
     final pwd = _password.text;
-    if (user.length < 3) return _snack('用户名至少 3 个字符');
-    if (pwd.length < 8) return _snack('密码至少 8 个字符');
-    if (pwd != _confirm.text) return _snack('两次输入的密码不一致');
+    if (user.length < 3) return _snack(context.l10n.usernameTooShort);
+    if (pwd.length < 8) return _snack(context.l10n.passwordTooShort);
+    if (pwd != _confirm.text) return _snack(context.l10n.passwordMismatch);
 
     setState(() => _loading = true);
     try {
       await ref.read(authStateProvider.notifier).register(user, pwd);
       if (!mounted) return;
-      _snack('注册成功，请登录', isError: false);
+      _snack(context.l10n.registerSuccess, isError: false);
       context.pop();
     } catch (e) {
       _snack(e.toString());
@@ -58,7 +59,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('注册新账号')),
+      appBar: AppBar(title: Text(context.l10n.registerTitle)),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(28),
@@ -75,18 +76,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 children: [
                   TextField(
                     controller: _username,
-                    decoration: const InputDecoration(
-                      labelText: '用户名',
-                      prefixIcon: Icon(Icons.person_outline),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.usernameLabel,
+                      prefixIcon: const Icon(Icons.person_outline),
                     ),
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: _password,
                     obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: '密码（至少 8 位）',
-                      prefixIcon: Icon(Icons.lock_outline),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.passwordMinLabel,
+                      prefixIcon: const Icon(Icons.lock_outline),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -94,9 +95,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _confirm,
                     obscureText: true,
                     onSubmitted: (_) => _submit(),
-                    decoration: const InputDecoration(
-                      labelText: '确认密码',
-                      prefixIcon: Icon(Icons.lock_reset),
+                    decoration: InputDecoration(
+                      labelText: context.l10n.confirmPasswordLabel,
+                      prefixIcon: const Icon(Icons.lock_reset),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -108,7 +109,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             height: 22,
                             child: CircularProgressIndicator(strokeWidth: 2.5),
                           )
-                        : const Text('注 册'),
+                        : Text(context.l10n.registerButton),
                   ),
                 ],
               ),

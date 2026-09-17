@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/widgets/glass.dart';
 import '../auth_provider.dart';
@@ -29,7 +30,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final user = _username.text.trim();
     final pwd = _password.text;
     if (user.isEmpty || pwd.isEmpty) {
-      _snack('请输入用户名和密码');
+      _snack(context.l10n.loginMissingFields);
       return;
     }
     setState(() => _loading = true);
@@ -96,15 +97,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 .headlineMedium
                                 ?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6),
-                        Text('知脉笔记 · 你的智能学习助手',
+                        Text(context.l10n.loginSubtitle,
                             textAlign: TextAlign.center,
                             style: TextStyle(color: scheme.onSurfaceVariant)),
                         const SizedBox(height: 28),
                         TextField(
                           controller: _username,
-                          decoration: const InputDecoration(
-                            labelText: '用户名',
-                            prefixIcon: Icon(Icons.person_outline),
+                          decoration: InputDecoration(
+                            labelText: context.l10n.usernameLabel,
+                            prefixIcon: const Icon(Icons.person_outline),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -112,9 +113,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _password,
                           obscureText: true,
                           onSubmitted: (_) => _submit(),
-                          decoration: const InputDecoration(
-                            labelText: '密码',
-                            prefixIcon: Icon(Icons.lock_outline),
+                          decoration: InputDecoration(
+                            labelText: context.l10n.passwordLabel,
+                            prefixIcon: const Icon(Icons.lock_outline),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -126,12 +127,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   height: 22,
                                   child: CircularProgressIndicator(strokeWidth: 2.5),
                                 )
-                              : const Text('登 录'),
+                              : Text(context.l10n.loginButton),
                         ),
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: () => context.push(AppRoutes.register),
-                          child: const Text('没有账号？点击注册'),
+                          child: Text(context.l10n.noAccountRegister),
                         ),
                       ],
                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/l10n/l10n.dart';
 import '../../../core/widgets/thinking_indicator.dart';
 import '../agent_provider.dart';
 import 'widgets/chat_bubble.dart';
@@ -78,12 +79,12 @@ class _AgentChatScreenState extends ConsumerState<AgentChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI 学习助手'),
+        title: Text(context.l10n.agentTitle),
         actions: [
           if (state.sessions.isNotEmpty)
             PopupMenuButton<String>(
               icon: const Icon(Icons.history),
-              tooltip: '历史会话',
+              tooltip: context.l10n.historyMenu,
               onSelected: (sid) async {
                 await ref.read(agentChatProvider.notifier).loadHistory(sid);
                 _scrollToBottom();
@@ -155,16 +156,16 @@ class _Welcome extends StatelessWidget {
           children: [
             Icon(Icons.auto_awesome, size: 56, color: scheme.primary),
             const SizedBox(height: 16),
-            Text('输入你的学习目标',
+            Text(context.l10n.agentWelcomeTitle,
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text('例如："帮我复习操作系统第三章"',
+            Text(context.l10n.agentWelcomeExample,
                 style: TextStyle(color: scheme.onSurfaceVariant)),
             const SizedBox(height: 8),
-            Text('Agent 会自主规划：检索笔记 → 生成摘要 → 出题 → 解释概念',
+            Text(context.l10n.agentWelcomeHint,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: scheme.outline)),
           ],
@@ -194,11 +195,11 @@ class _InputBar extends StatelessWidget {
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
-                decoration: const InputDecoration(
-                  hintText: '输入学习目标或问题…',
+                decoration: InputDecoration(
+                  hintText: context.l10n.agentInputHint,
                   isDense: true,
                   filled: true,
-                  border: OutlineInputBorder(
+                  border: const OutlineInputBorder(
                     borderRadius: BorderRadius.all(Radius.circular(24)),
                     borderSide: BorderSide.none,
                   ),
@@ -208,7 +209,7 @@ class _InputBar extends StatelessWidget {
             const SizedBox(width: 8),
             IconButton.filled(
               icon: const Icon(Icons.send),
-              tooltip: '发送',
+              tooltip: context.l10n.send,
               onPressed: onSend,
             ),
           ],

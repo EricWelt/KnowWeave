@@ -45,8 +45,6 @@
   "toolCalled": "调用工具 {tool}",
   "toolFailedSuffix": "（失败）",
   "toolCallSummary": "调用了 {tool} · {summary}",
-  "quizGenerated": "生成了 {count} 道练习题",
-  "quizFromHistory": "历史题目 {count} 道",
   "errorSend": "调用失败：{error}",
   "errorLoadHistory": "加载历史失败：{error}",
   "errorSubmitAnswers": "提交作答失败：{error}",
@@ -77,5 +75,6 @@
   "languageChineseSimplified": "简体中文",
   "aboutSection": "关于",
   "aboutSubtitle": "KnowWeave · 自研 ReAct Agent 学习系统",
-  "signOut": "退出登录"
+  "signOut": "退出登录",
+  "toolLabel": "工具"
 }
