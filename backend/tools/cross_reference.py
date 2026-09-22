@@ -2,9 +2,13 @@
 
 流程：向量检索相似分块 → 按笔记聚合命中数 → 取 top-3 笔记 → LLM 生成关联原因。
 """
+from string import Template
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .. import config
 from ..agent.llm_client import LLMClient
+from ..agent.prompts import get_texts
 from ..models import Note
 from ..rag import embedder, vector_store
 from .base import BaseTool, ToolResult
@@ -24,16 +28,23 @@ class CrossReferenceTool(BaseTool):
         "required": ["note_id"],
     }
 
-    def __init__(self, session: AsyncSession, user_id: str, llm_client: LLMClient):
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        llm_client: LLMClient,
+        lang: str | None = None,
+    ):
         self._session = session
         self._user_id = user_id
         self._llm = llm_client
+        self._texts = get_texts(lang or config.AGENT_DEFAULT_LANG)
 
     async def run(self, note_id: str, **kwargs) -> ToolResult:
         try:
             note = await self._session.get(Note, note_id)
             if note is None or note.user_id != self._user_id:
-                return ToolResult(success=False, error="笔记不存在")
+                return ToolResult(success=False, error=self._texts["err_note_missing"])
 
             # 1) 用笔记前几段做多次检索，聚合命中
             hits_by_note: dict[str, int] = {}
@@ -57,19 +68,25 @@ class CrossReferenceTool(BaseTool):
 
             # 3) LLM 为每篇生成一句关联原因
             if related:
-                system = "你是知识图谱助手。为每对笔记生成一句关联原因，输出 JSON 数组。"
-                user = (
-                    f"源笔记《{note.title}》与以下笔记相关：\n"
-                    + "\n".join(f"- {r['title']}" for r in related)
-                    + "\n输出 [{\"title\": ..., \"reason\": \"...\"}]"
+                user = Template(self._texts["cross_ref_user"]).substitute(
+                    title=note.title,
+                    titles="\n".join(f"- {r['title']}" for r in related),
                 )
                 try:
                     reasons = await self._llm.chat_json(
-                        [{"role": "system", "content": system}, {"role": "user", "content": user}]
+                        [
+                            {"role": "system", "content": self._texts["cross_ref_system"]},
+                            {"role": "user", "content": user},
+                        ]
                     )
-                    reason_map = {
-                        r.get("title", ""): r.get("reason", "") for r in reasons
-                    } if isinstance(reasons, list) else {}
+                    reason_map = (
+                        {
+                            r.get("title", ""): r.get("reason", "")
+                            for r in reasons
+                        }
+                        if isinstance(reasons, list)
+                        else {}
+                    )
                 except Exception:  # noqa: BLE001 —— 原因生成失败不阻断关联
                     reason_map = {}
 
@@ -77,7 +94,7 @@ class CrossReferenceTool(BaseTool):
                 {
                     "note_id": r["note_id"],
                     "title": r["title"],
-                    "relevance": "高",
+                    "relevance": self._texts["relevance_high"],
                     "reason": reason_map.get(r["title"], ""),
                 }
                 for r in related

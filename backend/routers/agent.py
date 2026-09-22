@@ -34,14 +34,23 @@ from ..tools import build_registry
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
 
-def _build_engine(session: AsyncSession, user: User) -> AgentEngine:
-    """按请求上下文组装 Agent（依赖注入：session/user/llm）。"""
+def _build_engine(
+    session: AsyncSession,
+    user: User,
+    lang: str | None = None,
+) -> AgentEngine:
+    """按请求上下文组装 Agent（依赖注入：session/user/llm/lang）。
+
+    lang 决定进入模型上下文的 Prompt 语言；为空时用 config.AGENT_DEFAULT_LANG。
+    """
     llm = LLMClient()
-    registry = build_registry(session, user.id, llm)
+    registry = build_registry(session, user.id, llm, lang)
     tracker = EvalTracker(session, session_id="")
     memory = MemoryManager(session, user.id)
-    planner = Planner(llm)
-    return AgentEngine(session, user.id, registry, llm, tracker, memory, planner)
+    planner = Planner(llm, lang)
+    return AgentEngine(
+        session, user.id, registry, llm, tracker, memory, planner, lang
+    )
 
 
 @router.post("/sessions", response_model=SessionOut, status_code=201)

@@ -21,12 +21,17 @@ __all__ = [
 ]
 
 
-def build_registry(session: AsyncSession, user_id: str, llm: LLMClient) -> ToolRegistry:
-    """按请求上下文构建工具注册表（依赖注入：session/user/llm）。"""
+def build_registry(
+    session: AsyncSession,
+    user_id: str,
+    llm: LLMClient,
+    lang: str | None = None,
+) -> ToolRegistry:
+    """按请求上下文构建工具注册表（依赖注入：session/user/llm/lang）。"""
     registry = ToolRegistry()
     registry.register(SearchNotesTool())
-    registry.register(GenerateSummaryTool(session, user_id, llm))
-    registry.register(CreateQuizTool(session, user_id, llm))
-    registry.register(CrossReferenceTool(session, user_id, llm))
-    registry.register(ExplainConceptTool(llm))
+    registry.register(GenerateSummaryTool(session, user_id, llm, lang))
+    registry.register(CreateQuizTool(session, user_id, llm, lang))
+    registry.register(CrossReferenceTool(session, user_id, llm, lang))
+    registry.register(ExplainConceptTool(llm, lang))
     return registry

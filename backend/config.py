@@ -104,6 +104,8 @@ LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "2"))
 # 若 >0 则强制覆盖所有模型（如想临时把某个模型间隔调大/调小）
 LLM_MIN_INTERVAL = float(os.getenv("LLM_MIN_INTERVAL", "0"))
 MEMORY_RECENT_TURNS = int(os.getenv("MEMORY_RECENT_TURNS", "10"))  # 短期记忆轮数
+# 未显式指定语言时使用的 Prompt 语言（BCP 47 键：zh-Hans / en）
+AGENT_DEFAULT_LANG = os.getenv("AGENT_DEFAULT_LANG", "zh-Hans")
 
 # ============ 存储 ============
 DATA_DIR = BASE_DIR / "data"

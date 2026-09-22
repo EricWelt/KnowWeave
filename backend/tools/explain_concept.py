@@ -1,5 +1,9 @@
 """工具：explain_concept —— 费曼学习法解释概念。"""
+from string import Template
+
+from .. import config
 from ..agent.llm_client import LLMClient
+from ..agent.prompts import get_texts
 from .base import BaseTool, ToolResult
 
 
@@ -17,24 +21,23 @@ class ExplainConceptTool(BaseTool):
         "required": ["concept"],
     }
 
-    def __init__(self, llm_client: LLMClient):
+    def __init__(self, llm_client: LLMClient, lang: str | None = None):
         self._llm = llm_client
+        self._texts = get_texts(lang or config.AGENT_DEFAULT_LANG)
 
     async def run(self, concept: str, **kwargs) -> ToolResult:
-        system = (
-            "你是一位擅长费曼学习法的老师。用最通俗的语言解释概念，"
-            "必须包含：简单解释、类比、具体例子、相关概念。只输出 JSON 对象，不要额外文字。"
-        )
-        user = f"请解释概念：{concept}"
+        user = Template(self._texts["explain_user"]).substitute(concept=concept)
         try:
             data = await self._llm.chat_json(
                 [
-                    {"role": "system", "content": system},
+                    {"role": "system", "content": self._texts["explain_system"]},
                     {"role": "user", "content": user},
                 ]
             )
             if not isinstance(data, dict):
-                return ToolResult(success=False, error="LLM 未返回 JSON 对象")
+                return ToolResult(
+                    success=False, error=self._texts["err_not_json_object"]
+                )
             return ToolResult(success=True, data=data)
         except Exception as e:  # noqa: BLE001
             return ToolResult(success=False, error=str(e))

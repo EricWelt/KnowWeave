@@ -2,10 +2,13 @@
 
 需要数据库访问（读取笔记内容），故构造时注入 session 与 user_id（依赖注入）。
 """
-from sqlalchemy import select
+from string import Template
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .. import config
 from ..agent.llm_client import LLMClient
+from ..agent.prompts import get_texts
 from ..models import Note
 from .base import BaseTool, ToolResult
 
@@ -28,14 +31,21 @@ class GenerateSummaryTool(BaseTool):
         "required": ["note_ids"],
     }
 
-    def __init__(self, session: AsyncSession, user_id: str, llm_client: LLMClient):
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        llm_client: LLMClient,
+        lang: str | None = None,
+    ):
         self._session = session
         self._user_id = user_id
         self._llm = llm_client
+        self._texts = get_texts(lang or config.AGENT_DEFAULT_LANG)
 
     async def run(self, note_ids: list[str], **kwargs) -> ToolResult:
         if not note_ids:
-            return ToolResult(success=False, error="note_ids 不能为空")
+            return ToolResult(success=False, error=self._texts["err_note_ids_empty"])
         try:
             notes = []
             for nid in note_ids:
@@ -43,20 +53,22 @@ class GenerateSummaryTool(BaseTool):
                 if note is not None and note.user_id == self._user_id:
                     notes.append(note)
             if not notes:
-                return ToolResult(success=False, error="未找到可用的笔记")
+                return ToolResult(
+                    success=False, error=self._texts["err_notes_not_found"]
+                )
 
             contents = "\n\n---\n\n".join(
                 f"### {n.title}\n{n.content[:3000]}" for n in notes
             )
-            system = (
-                "你是学习助手。根据笔记内容输出 JSON 对象："
-                '{"summary": "markdown 格式结构化摘要", "key_concepts": ["概念1",...], '
-                '"suggested_review_focus": ["需要重点复习的内容"]}。只输出 JSON。'
-            )
             data = await self._llm.chat_json(
                 [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": f"笔记内容：\n{contents}"},
+                    {"role": "system", "content": self._texts["summary_system"]},
+                    {
+                        "role": "user",
+                        "content": Template(self._texts["summary_user"]).substitute(
+                            contents=contents
+                        ),
+                    },
                 ]
             )
             return ToolResult(success=True, data=data)

@@ -7,21 +7,17 @@
 - 计划是「建议」不是「强制」：engine 注入 system_prompt，LLM 在 think 阶段参考但不盲从；
 - 防御性解析：LLM 输出 JSON 不稳定，用 chat_json 兜底；shape 校验失败则降级为空计划。
 """
+from string import Template
+
 from .. import config
 from .llm_client import LLMClient
-
-PLANNER_SYSTEM = (
-    "你是一位学习规划专家。根据用户的学习目标制定分步执行计划。\n"
-    "只输出 JSON 数组，每项格式：\n"
-    '[{"step": 1, "action": "具体行动描述", "tool": "建议使用的工具名或 null"}]\n'
-    "工具名只能从给出的可用工具中选择，也可以为 null（表示该步骤不需要工具）。"
-    "不要输出任何额外文字。"
-)
+from .prompts import get_texts
 
 
 class Planner:
-    def __init__(self, llm: LLMClient):
+    def __init__(self, llm: LLMClient, lang: str | None = None):
         self._llm = llm
+        self._texts = get_texts(lang or config.AGENT_DEFAULT_LANG)
 
     async def plan(
         self,
@@ -33,16 +29,15 @@ class Planner:
         if not goal.strip():
             return []
 
-        user = (
-            f"学习目标：{goal}\n\n"
-            f"用户当前知识状态摘要：\n{knowledge_summary or '（暂无记录）'}\n\n"
-            f"可用工具：\n{tools_description or '（无）'}\n\n"
-            f"请输出 3-6 步的执行计划。"
+        user = Template(self._texts["planner_user"]).substitute(
+            goal=goal,
+            knowledge=knowledge_summary or self._texts["none_recorded"],
+            tools=tools_description or self._texts["none_available"],
         )
         try:
             data = await self._llm.chat_json(
                 [
-                    {"role": "system", "content": PLANNER_SYSTEM},
+                    {"role": "system", "content": self._texts["planner_system"]},
                     {"role": "user", "content": user},
                 ],
                 temperature=0.2,

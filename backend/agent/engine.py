@@ -14,6 +14,7 @@ LLM 决策格式（provider 无关，纯文本 JSON，不依赖 function calling
 import json
 import time
 from datetime import datetime, timezone
+from string import Template
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,19 +26,7 @@ from .json_utils import parse_json_defensive
 from .llm_client import LLMClient
 from .memory import MemoryManager
 from .planner import Planner
-
-THINK_SYSTEM = (
-    "你是一个智能学习助手 Agent，采用 ReAct（推理+行动）范式帮用户完成学习任务。\n"
-    "规则：\n"
-    "1. 每轮输出一个 JSON 对象，格式："
-    '{"thought": "对当前情况的简短分析", "action": "工具名或final", "params": {...}}\n'
-    "2. action 只能是给出的工具名之一，或 final（任务完成时给出最终回答）。\n"
-    "3. 调用工具时 params 必须符合工具参数要求。\n"
-    "4. 观察工具返回后，再决定下一步；不要重复调用相同参数的同一工具。\n"
-    "5. 任务完成时：{\"thought\": \"总结\", \"action\": \"final\", "
-    '\"params\": {\"answer\": "给用户的最终回答(markdown)"}}\n'
-    "只输出 JSON，不要任何额外文字。"
-)
+from .prompts import get_texts
 
 
 class AgentEngine:
@@ -50,6 +39,7 @@ class AgentEngine:
         tracker: EvalTracker,
         memory: MemoryManager,
         planner: Planner,
+        lang: str | None = None,
     ):
         self._session = session
         self._user_id = user_id
@@ -58,6 +48,8 @@ class AgentEngine:
         self._tracker = tracker
         self._memory = memory
         self._planner = planner
+        # 进入模型上下文的自然语言文本（按语言选择；见 agent/prompts/）
+        self._texts = get_texts(lang or config.AGENT_DEFAULT_LANG)
 
     # ================= 对外入口 =================
 
@@ -73,7 +65,7 @@ class AgentEngine:
         """在已有会话中继续对话（多轮交互）。"""
         row = await self._session.get(AgentSession, session_id)
         if row is None or row.user_id != self._user_id:
-            raise ValueError("会话不存在")
+            raise ValueError(self._texts["err_session_missing"])
         return await self._execute(row, initial_user_message=message)
 
     # ================= 主流程 =================
@@ -145,12 +137,19 @@ class AgentEngine:
             # ---- ACT ----
             tool = self._registry.get(action)
             if tool is None:
-                observation = f"错误：工具「{action}」不存在。可用工具: {self._registry.descriptions()}"
+                observation = Template(
+                    self._texts["obs_tool_missing"]
+                ).substitute(tool=action, tools=self._registry.descriptions())
                 await self._tracker.record_step(
                     step_type="observe", content=observation, success=False
                 )
                 conversation.append(
-                    {"role": "assistant", "content": f"调用工具 {action}"}
+                    {
+                        "role": "assistant",
+                        "content": Template(
+                            self._texts["note_tool_call"]
+                        ).substitute(tool=action),
+                    }
                 )
                 conversation.append({"role": "user", "content": observation})
                 step_count += 1
@@ -174,7 +173,9 @@ class AgentEngine:
                 if result.success:
                     observation = json.dumps(result.data, ensure_ascii=False)
                 else:
-                    observation = f"工具执行失败: {result.error}"
+                    observation = Template(
+                        self._texts["obs_tool_failed"]
+                    ).substitute(error=result.error)
             except Exception as e:  # noqa: BLE001 —— 工具抛异常也要记录并继续
                 latency_ms = int((time.monotonic() - t0) * 1000)
                 await self._tracker.record_step(
@@ -187,18 +188,27 @@ class AgentEngine:
                     success=False,
                     error_message=str(e),
                 )
-                observation = f"工具异常: {e}"
+                observation = Template(self._texts["obs_tool_error"]).substitute(
+                    error=e
+                )
 
             # ---- OBSERVE（截断）----
             observation = observation[: config.TOOL_OUTPUT_MAX_CHARS]
             conversation.append(
-                {"role": "assistant", "content": f"调用工具 {action}"}
+                {
+                    "role": "assistant",
+                    "content": Template(self._texts["note_tool_call"]).substitute(
+                        tool=action
+                    ),
+                }
             )
             conversation.append(
                 {
                     "role": "user",
+                    # 「[工具 X 返回]」是前后端共用的协议常量，不随语言变化；
+                    # 其后的提醒语按当前语言给出。
                     "content": f"[工具 {action} 返回]\n{observation}\n\n"
-                    "请基于以上结果，只输出一个 JSON 决策对象，不要任何解释文字。",
+                    f"{self._texts['obs_reminder']}",
                 }
             )
             step_count += 1
@@ -208,7 +218,7 @@ class AgentEngine:
         if not final_answer:
             final_answer = await self._finalize_answer(conversation, plan)
         if not final_answer:
-            final_answer = "已完成本轮学习任务（达到步数上限）。可继续追问更具体的问题。"
+            final_answer = self._texts["answer_fallback"]
         if final_answer:
             completed_steps = max(completed_steps, 1)  # 有回答即视为任务有产出
 
@@ -246,21 +256,28 @@ class AgentEngine:
     def _build_system_prompt(
         self, goal: str, knowledge_summary: str, plan: list[dict]
     ) -> str:
+        texts = self._texts
+        tool_suffix = Template(texts["plan_tool_suffix"])
         plan_text = (
             "\n".join(
                 f"{p.get('step')}. {p.get('action')}"
-                + (f"（工具: {p.get('tool')}）" if p.get("tool") else "")
+                + (
+                    tool_suffix.substitute(tool=p.get("tool"))
+                    if p.get("tool")
+                    else ""
+                )
                 for p in plan
             )
             if plan
-            else "（无预规划，自行安排步骤）"
+            else texts["plan_empty"]
         )
         return (
-            f"{THINK_SYSTEM}\n\n"
-            f"## 本次学习目标\n{goal}\n\n"
-            f"## 参考执行计划（仅供参考，可调整）\n{plan_text}\n\n"
-            f"## 用户知识状态\n{knowledge_summary or '（暂无记录）'}\n\n"
-            f"## 可用工具\n{self._registry.descriptions()}"
+            f"{texts['think_system']}\n\n"
+            f"{texts['plan_goal_header']}\n{goal}\n\n"
+            f"{texts['plan_plan_header']}\n{plan_text}\n\n"
+            f"{texts['plan_knowledge_header']}\n"
+            f"{knowledge_summary or texts['none_recorded']}\n\n"
+            f"{texts['plan_tools_header']}\n{self._registry.descriptions()}"
         )
 
     async def _think(
@@ -273,13 +290,11 @@ class AgentEngine:
         - max_tokens 给足（1536），避免截断；
         - 重试 3 次且提示逐级加严（从"只输出 JSON"到"禁止任何解释文字"）。
         """
+        texts = self._texts
         corrections = [
-            '输出格式错误（第1次）。请只输出一个 JSON 对象：'
-            '{"thought": "...", "action": "工具名|final", "params": {...}}，不要任何解释文字。',
-            '第2次格式错误。你的上一条输出里混入了非 JSON 内容或 JSON 不完整。'
-            '现在只允许输出一个合法 JSON 对象（以 { 开头、以 } 结尾），禁止输出任何其他字符。',
-            '第3次格式错误。请直接输出决策 JSON：{"thought": "分析", '
-            '"action": "工具名或final", "params": {...}}。不要输出任何其他内容。',
+            texts["correction_1"],
+            texts["correction_2"],
+            texts["correction_3"],
         ]
         for attempt in range(3):
             try:
@@ -294,7 +309,9 @@ class AgentEngine:
                 conversation.append(
                     {
                         "role": "user",
-                        "content": f"你的输出不是合法 JSON（第{attempt+1}次）: {str(e)[:120]}。"
+                        "content": Template(
+                            texts["correction_parse_error"]
+                        ).substitute(attempt=attempt + 1, error=str(e)[:120])
                         + corrections[attempt],
                     }
                 )
@@ -310,10 +327,8 @@ class AgentEngine:
         追加一次强制"给用户回答"的调用；若仍输出 JSON，剥离后兜底。
         """
         instructions = [
-            "基于以上过程，请用 markdown 给出最终回答：已完成哪些步骤、"
-            "关键结论、对用户下一步复习的建议。直接给用户可读的回答，不要输出 JSON。",
-            "请只输出给用户的最终回答（markdown 文本）。不要输出任何 JSON 对象、"
-            "工具调用或决策格式。",
+            self._texts["finalize_1"],
+            self._texts["finalize_2"],
         ]
         text = ""
         for instruction in instructions:
@@ -341,14 +356,19 @@ class AgentEngine:
 
     def _extract_weak_points(self, conversation: list[dict]) -> list[str]:
         """简化实现：从 quiz 类工具返回中找含「错误」的线索（完整版可接用户作答分析）。"""
+        markers = [
+            m.strip() for m in self._texts["weak_markers"].split("|") if m.strip()
+        ]
         weak = []
         for msg in conversation:
             content = msg.get("content", "")
+            # 协议常量：与后端写入、前端解析保持一致，不随语言变化
             if "[工具 create_quiz 返回]" in content:
                 try:
                     data = json.loads(content.split("]\n", 1)[1])
                     for q in data.get("questions", []):
-                        if q.get("explanation") and "易错" in q["explanation"]:
+                        explanation = q.get("explanation") or ""
+                        if any(marker in explanation for marker in markers):
                             weak.append(q.get("question", "")[:30])
                 except Exception:  # noqa: BLE001
                     continue
@@ -372,9 +392,13 @@ class AgentEngine:
                 # 思考过程给足内容（前端可折叠展示「深度思考」）
                 summary = s.content[:500]
             elif s.step_type == "act":
-                summary = f"调用工具 {s.tool_name}"
+                summary = Template(self._texts["step_summary_tool"]).substitute(
+                    tool=s.tool_name
+                )
                 if not s.success:
-                    summary += f"（失败: {s.error_message}）"
+                    summary += Template(
+                        self._texts["step_summary_failed"]
+                    ).substitute(error=s.error_message)
             else:
                 summary = s.content[:200]
             steps.append(
