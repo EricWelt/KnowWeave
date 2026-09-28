@@ -5,6 +5,17 @@
 > 基础地址：`http://localhost:8000` · 交互式文档：`/docs`
 > 认证：除 `/auth/register` 与 `/auth/login` 外，所有接口都需要请求头 `Authorization: Bearer <token>`。
 
+## 语言
+
+接口按请求指定的语言返回内容，优先级为：
+
+1. 请求体中的 `lang` 字段（BCP 47 标签，如 `en`、`zh-Hans`）
+2. `Accept-Language` 请求头
+3. 服务端默认值 `AGENT_DEFAULT_LANG`（默认 `zh-Hans`）
+
+该语言决定 Agent 使用的 Prompt 文本、模型读到的工具描述、步骤摘要以及错误信息的语言。
+工具名、JSON 字段名、`action` 取值与 `[工具 X 返回]` 标记都是协议常量，不随语言变化。
+
 ## 认证
 
 | 方法 | 路径 | 说明 |
@@ -37,7 +48,11 @@
 | GET | `/agent/sessions/{id}` | 会话详情，含完整对话 |
 | GET | `/agent/sessions/{id}/eval` | 评测报告 `{metrics, details}` |
 
+`{goal}` 与 `{message}` 都接受可选的 `lang` 字段，用于单独覆盖本次请求的语言。
+
 创建会话会完整跑一遍 ReAct 循环，直到助手给出最终回答才返回，因此该请求耗时较长。用 `/chat` 继续会话时，会在同一段对话上再跑一轮循环。
+
+`steps` 的每一项都带有 `success`，工具调用失败时还带 `error`。判断成败请读这两个字段，不要去解析 `summary`——它的措辞随请求语言变化。
 
 ### 评测指标
 

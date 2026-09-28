@@ -154,11 +154,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolFailedSuffix => ' (failed)';
 
   @override
-  String toolCallSummary(String tool, String summary) {
-    return 'Called $tool · $summary';
-  }
-
-  @override
   String errorSend(String error) {
     return 'Request failed: $error';
   }

@@ -171,6 +171,53 @@ void main() {
     expect(find.text('退出登录'), findsNothing);
   });
 
+  testWidgets('界面语言会作为 Accept-Language 随请求发出', (tester) async {
+    final tags = <String?>[];
+    final client = MockClient((request) async {
+      tags.add(request.headers['Accept-Language']);
+      if (request.url.path == '/auth/login') {
+        return _json({'token': 't', 'user_id': '1', 'username': 'alice'}, 200);
+      }
+      return _json([], 200);
+    });
+
+    await tester.pumpWidget(
+        await buildTestApp(client: client, language: 'zhHans'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'alice');
+    await tester.enterText(find.byType(TextField).at(1), 'secret123');
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+
+    expect(tags, isNotEmpty);
+    // BCP 47：简体中文用脚本子标签 zh-Hans，而非地区形式 zh-CN
+    expect(tags.first, 'zh-Hans');
+  });
+
+  testWidgets('跟随系统且系统为英文时，请求头为 en', (tester) async {
+    tester.platformDispatcher.localeTestValue = const Locale('en');
+    addTearDown(tester.platformDispatcher.clearLocaleTestValue);
+
+    final tags = <String?>[];
+    final client = MockClient((request) async {
+      tags.add(request.headers['Accept-Language']);
+      if (request.url.path == '/auth/login') {
+        return _json({'token': 't', 'user_id': '1', 'username': 'alice'}, 200);
+      }
+      return _json([], 200);
+    });
+
+    await tester.pumpWidget(await buildTestApp(client: client, language: null));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'alice');
+    await tester.enterText(find.byType(TextField).at(1), 'secret123');
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+
+    expect(tags, isNotEmpty);
+    expect(tags.first, 'en');
+  });
+
   testWidgets('跟随系统时按系统语言显示（系统为英文）', (tester) async {
     tester.platformDispatcher.localeTestValue = const Locale('en');
     addTearDown(tester.platformDispatcher.clearLocaleTestValue);

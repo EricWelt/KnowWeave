@@ -5,6 +5,19 @@ English丨[简体中文](api.zh-Hans.md)
 > Base URL: `http://localhost:8000` · Interactive docs: `/docs`
 > Authentication: every endpoint except `/auth/register` and `/auth/login` requires the header `Authorization: Bearer <token>`.
 
+## Language
+
+The API answers in the language of the request. It is resolved in this order:
+
+1. the `lang` field in the request body, as a BCP 47 tag (`en`, `zh-Hans`)
+2. the `Accept-Language` header
+3. the server default, `AGENT_DEFAULT_LANG` (itself `zh-Hans`)
+
+This choice selects the prompt pack the agent runs with, the tool descriptions the model
+reads, the language of step summaries, and the language of error details. Tool names, JSON
+field names, `action` values, and the `[工具 X 返回]` conversation marker are protocol
+constants and never change with the language.
+
 ## Authentication
 
 | Method | Path | Description |
@@ -37,7 +50,11 @@ A note has the fields `id` (UUID), `title`, `content`, `source_type` (`manual` /
 | GET | `/agent/sessions/{id}` | One session, including the full conversation |
 | GET | `/agent/sessions/{id}/eval` | Evaluation report `{metrics, details}` |
 
+Both `{goal}` and `{message}` accept an optional `lang` field that overrides the header for that request.
+
 Creating a session runs the full ReAct loop and returns once the agent has produced its final answer, so this call can take a while. Continuing a session with `/chat` runs another loop over the same conversation.
+
+Each entry in `steps` reports `success` and, when a tool call failed, `error`. Read those rather than parsing `summary`, whose wording follows the request language.
 
 ### Evaluation metrics
 

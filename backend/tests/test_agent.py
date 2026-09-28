@@ -78,7 +78,7 @@ def _think(action: str, **params):
     return json.dumps({"thought": "思考", "action": action, "params": params})
 
 
-async def _make_engine(db_session, llm, registry=None):
+async def _make_engine(db_session, llm, registry=None, lang=None):
     from backend.tools import ToolRegistry
 
     user = User(username=f"u{id(llm)}", password_hash="x")
@@ -93,8 +93,10 @@ async def _make_engine(db_session, llm, registry=None):
 
     tracker = EvalTracker(db_session, session_id="")
     memory = MemoryManager(db_session, user.id)
-    planner = Planner(llm)
-    return AgentEngine(db_session, user.id, registry, llm, tracker, memory, planner)
+    planner = Planner(llm, lang)
+    return AgentEngine(
+        db_session, user.id, registry, llm, tracker, memory, planner, lang
+    )
 
 
 # ==================== 用例 ====================
@@ -317,3 +319,66 @@ async def test_observation_includes_format_reminder(db_session):
     obs_msgs = [m for m in result['conversation'] if '[工具 echo 返回]' in m.get('content', '')]
     assert obs_msgs
     assert '只输出一个 JSON 决策对象' in obs_msgs[0]['content']
+
+
+# ==================== 语言（Phase B）====================
+
+
+async def test_engine_defaults_to_chinese_prompts(db_session):
+    """不指定语言时使用默认语言（zh-Hans），与既有行为一致。"""
+    llm = FakeLLMClient(script=[_plan_json(), _think('final', answer='完成')])
+    engine = await _make_engine(db_session, llm)
+    await engine.start_session('复习')
+    planner_system = llm.calls[0][0]['content']
+    think_system = llm.calls[1][0]['content']
+    assert planner_system.startswith('你是一位学习规划专家')
+    assert '你是一个智能学习助手 Agent' in think_system
+    assert '## 本次学习目标' in think_system
+
+
+async def test_engine_uses_english_prompts_when_requested(db_session):
+    """指定 en 时，规划器与 ReAct 的 system prompt 均为英文。"""
+    llm = FakeLLMClient(script=[_plan_json(), _think('final', answer='done')])
+    engine = await _make_engine(db_session, llm, lang='en')
+    await engine.start_session('review chapter three')
+    planner_system = llm.calls[0][0]['content']
+    think_system = llm.calls[1][0]['content']
+    assert planner_system.startswith('You are a study-planning expert')
+    assert 'You are a study assistant agent' in think_system
+    assert '## Learning goal' in think_system
+    # 中文提示不应泄漏进英文会话
+    assert '本次学习目标' not in think_system
+
+
+async def test_observation_and_step_summary_follow_language(db_session):
+    """观察消息的提醒语、步骤摘要都随语言切换；协议常量保持固定。"""
+    llm = FakeLLMClient(
+        script=[_plan_json(), _think('echo', text='hi'), _think('final', answer='ok')]
+    )
+    engine = await _make_engine(db_session, llm, lang='en')
+    result = await engine.start_session('test')
+
+    obs = [
+        m for m in result['conversation']
+        if '[工具 echo 返回]' in m.get('content', '')
+    ]
+    assert obs
+    assert obs[0]['content'].startswith('[工具 echo 返回]')
+    assert 'JSON decision object' in obs[0]['content']
+
+    acts = [s for s in result['steps'] if s['type'] == 'act']
+    assert acts[0]['summary'] == 'Called tool echo'
+    assert acts[0]['success'] is True
+
+
+async def test_step_failure_flag_and_error_are_exposed(db_session):
+    """失败步骤给出 success=False 与错误详情，界面不必从文本里猜。"""
+    llm = FakeLLMClient(
+        script=[_plan_json(), _think('boom'), _think('final', answer='done')]
+    )
+    engine = await _make_engine(db_session, llm, lang='en')
+    result = await engine.start_session('test')
+    acts = [s for s in result['steps'] if s['type'] == 'act']
+    assert acts[0]['success'] is False
+    assert acts[0]['error'] == '模拟失败'
+    assert 'failed' in acts[0]['summary']

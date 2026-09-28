@@ -75,7 +75,7 @@ flutter run
 flutter build apk --dart-define=API_BASE_URL=http://<your-host>:8000
 ```
 
-The interface follows the system language and can be switched between English and Simplified Chinese from the profile tab.
+The interface follows the system language and can be switched between English and Simplified Chinese from the profile tab. The assistant answers in the same language, from its prompts down to its error messages.
 
 ## How It Works
 

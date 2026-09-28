@@ -151,11 +151,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get toolFailedSuffix => '（失败）';
 
   @override
-  String toolCallSummary(String tool, String summary) {
-    return '调用了 $tool · $summary';
-  }
-
-  @override
   String errorSend(String error) {
     return '调用失败：$error';
   }
@@ -413,11 +408,6 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get toolFailedSuffix => '（失败）';
-
-  @override
-  String toolCallSummary(String tool, String summary) {
-    return '调用了 $tool · $summary';
-  }
 
   @override
   String errorSend(String error) {

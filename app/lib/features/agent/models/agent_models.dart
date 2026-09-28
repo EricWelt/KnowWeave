@@ -34,8 +34,8 @@ class ChatMessage {
   /// user / assistant 的正文；error 类型存放错误详情。
   final String content;
 
-  /// 工具调用卡片：后端步骤摘要（Phase B 起由后端按语言返回）
-  final String? toolSummary;
+  /// 工具调用卡片：失败时后端返回的错误详情（已按请求语言本地化）
+  final String? toolError;
 
   /// 工具名；缺失时界面用 l10n.toolLabel 兜底
   final String? toolName;
@@ -55,7 +55,7 @@ class ChatMessage {
   const ChatMessage(
     this.type, {
     this.content = '',
-    this.toolSummary,
+    this.toolError,
     this.toolName,
     this.questions,
     this.quizResult,
@@ -141,11 +141,19 @@ class AgentStepInfo {
   final String summary;
   final String? tool;
 
+  /// 该步是否成功；失败时 [error] 给出后端返回的错误详情。
+  ///
+  /// 这两项由后端显式提供：文案会随语言变化，判断成败不能依赖文案。
+  final bool success;
+  final String? error;
+
   const AgentStepInfo({
     required this.step,
     required this.type,
     required this.summary,
     this.tool,
+    this.success = true,
+    this.error,
   });
 
   factory AgentStepInfo.fromJson(Map<String, dynamic> json) => AgentStepInfo(
@@ -153,6 +161,8 @@ class AgentStepInfo {
         type: json['type']?.toString() ?? '',
         summary: json['summary']?.toString() ?? '',
         tool: json['tool']?.toString(),
+        success: json['success'] as bool? ?? true,
+        error: json['error']?.toString(),
       );
 }
 

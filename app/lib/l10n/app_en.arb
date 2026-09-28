@@ -79,17 +79,6 @@
     }
   },
   "toolFailedSuffix": " (failed)",
-  "toolCallSummary": "Called {tool} · {summary}",
-  "@toolCallSummary": {
-    "placeholders": {
-      "tool": {
-        "type": "String"
-      },
-      "summary": {
-        "type": "String"
-      }
-    }
-  },
   "errorSend": "Request failed: {error}",
   "@errorSend": {
     "placeholders": {

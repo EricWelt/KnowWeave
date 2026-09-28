@@ -44,7 +44,6 @@
   "thinkingStepCount": "{count} 个推理步骤",
   "toolCalled": "调用工具 {tool}",
   "toolFailedSuffix": "（失败）",
-  "toolCallSummary": "调用了 {tool} · {summary}",
   "errorSend": "调用失败：{error}",
   "errorLoadHistory": "加载历史失败：{error}",
   "errorSubmitAnswers": "提交作答失败：{error}",

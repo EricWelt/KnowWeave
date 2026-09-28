@@ -5,10 +5,15 @@ POST /agent/sessions/{id}/chat {message} → 继续对话
 GET  /agent/sessions → 会话列表
 GET  /agent/sessions/{id} → 会话详情（含对话历史）
 GET  /agent/sessions/{id}/eval → 评测报告
+
+语言：请求体显式字段 lang > Accept-Language 头 > config.AGENT_DEFAULT_LANG。
+Prompt、工具描述、步骤摘要与错误信息都按该语言给出。
 """
 import json
+from collections.abc import Mapping
+from string import Template
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +23,7 @@ from ..agent.eval_tracker import EvalTracker
 from ..agent.llm_client import LLMClient
 from ..agent.memory import MemoryManager
 from ..agent.planner import Planner
+from ..agent.prompts import get_texts, resolve_lang
 from ..core.security import get_current_user
 from ..database import get_session
 from ..models import AgentSession, EvalLog, User
@@ -32,6 +38,14 @@ from ..schemas import (
 from ..tools import build_registry
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
+
+
+def _resolve_texts(
+    lang: str | None, accept_language: str | None
+) -> tuple[str, Mapping[str, str]]:
+    """解析本次请求的语言，返回（语言键, 文本表）。"""
+    resolved = resolve_lang(lang, accept_language, config.AGENT_DEFAULT_LANG)
+    return resolved, get_texts(resolved)
 
 
 def _build_engine(
@@ -56,17 +70,20 @@ def _build_engine(
 @router.post("/sessions", response_model=SessionOut, status_code=201)
 async def create_session(
     request: SessionCreateRequest,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    lang, texts = _resolve_texts(request.lang, accept_language)
     if not request.goal.strip():
-        raise HTTPException(status_code=400, detail="学习目标不能为空")
-    engine = _build_engine(session, user)
+        raise HTTPException(status_code=400, detail=texts["err_goal_empty"])
+    engine = _build_engine(session, user, lang)
     try:
         result = await engine.start_session(request.goal.strip())
     except Exception as e:  # noqa: BLE001 —— LLM 不可用等外部故障
         raise HTTPException(
-            status_code=502, detail=f"Agent 执行失败: {e}"
+            status_code=502,
+            detail=Template(texts["err_agent_failed"]).substitute(error=e),
         ) from e
     return result
 
@@ -75,16 +92,21 @@ async def create_session(
 async def continue_chat(
     session_id: str,
     request: ChatRequest,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    engine = _build_engine(session, user)
+    lang, texts = _resolve_texts(request.lang, accept_language)
+    engine = _build_engine(session, user, lang)
     try:
         result = await engine.continue_session(session_id, request.message)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:  # noqa: BLE001
-        raise HTTPException(status_code=502, detail=f"Agent 执行失败: {e}") from e
+        raise HTTPException(
+            status_code=502,
+            detail=Template(texts["err_agent_failed"]).substitute(error=e),
+        ) from e
     return {
         "session_id": result["session_id"],
         "reply": result["summary"],
@@ -116,12 +138,14 @@ async def list_sessions(
 @router.get("/sessions/{session_id}")
 async def get_session_detail(
     session_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    _, texts = _resolve_texts(None, accept_language)
     row = await session.get(AgentSession, session_id)
     if row is None or row.user_id != user.id:
-        raise HTTPException(status_code=404, detail="会话不存在")
+        raise HTTPException(status_code=404, detail=texts["err_session_missing"])
     try:
         conversation = json.loads(row.conversation_json or "[]")
     except json.JSONDecodeError:
@@ -138,12 +162,14 @@ async def get_session_detail(
 @router.get("/sessions/{session_id}/eval")
 async def get_session_eval(
     session_id: str,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    _, texts = _resolve_texts(None, accept_language)
     row = await session.get(AgentSession, session_id)
     if row is None or row.user_id != user.id:
-        raise HTTPException(status_code=404, detail="会话不存在")
+        raise HTTPException(status_code=404, detail=texts["err_session_missing"])
     result = await session.scalars(
         select(EvalLog).where(EvalLog.session_id == session_id)
     )
@@ -154,17 +180,20 @@ async def get_session_eval(
         "details": [json.loads(log.detail_json or "{}") for log in logs],
     }
 
+
 @router.post("/sessions/{session_id}/answers", response_model=AnswerSubmitResponse)
 async def submit_answers(
     session_id: str,
     request: AnswerSubmitRequest,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """提交选择题作答 → 更新知识掌握状态（答题闭环）。"""
+    _, texts = _resolve_texts(None, accept_language)
     row = await session.get(AgentSession, session_id)
     if row is None or row.user_id != user.id:
-        raise HTTPException(status_code=404, detail="会话不存在")
+        raise HTTPException(status_code=404, detail=texts["err_session_missing"])
 
     total = len(request.answers)
     correct = sum(1 for a in request.answers if a.is_correct)
@@ -182,8 +211,6 @@ async def submit_answers(
     )
 
     # 取更新后的掌握度
-    from sqlalchemy import select
-
     from ..models import KnowledgeState
 
     state = await session.scalar(

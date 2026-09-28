@@ -26,7 +26,7 @@ from .json_utils import parse_json_defensive
 from .llm_client import LLMClient
 from .memory import MemoryManager
 from .planner import Planner
-from .prompts import get_texts
+from .prompts import get_texts, resolve_lang
 
 
 class AgentEngine:
@@ -48,8 +48,9 @@ class AgentEngine:
         self._tracker = tracker
         self._memory = memory
         self._planner = planner
-        # 进入模型上下文的自然语言文本（按语言选择；见 agent/prompts/）
-        self._texts = get_texts(lang or config.AGENT_DEFAULT_LANG)
+        # 本次会话的语言（BCP 47 归一化后的键）与对应文本表（见 agent/prompts/）
+        self._lang = resolve_lang(lang, default=config.AGENT_DEFAULT_LANG)
+        self._texts = get_texts(self._lang)
 
     # ================= 对外入口 =================
 
@@ -76,7 +77,7 @@ class AgentEngine:
         self._tracker.attach(row.id)
         # 1) 加载记忆 + 规划
         knowledge_summary = await self._memory.load_knowledge_summary()
-        tools_desc = self._registry.descriptions()
+        tools_desc = self._registry.descriptions(self._lang)
         plan = await self._planner.plan(
             initial_user_message, knowledge_summary, tools_desc
         )
@@ -139,7 +140,9 @@ class AgentEngine:
             if tool is None:
                 observation = Template(
                     self._texts["obs_tool_missing"]
-                ).substitute(tool=action, tools=self._registry.descriptions())
+                ).substitute(
+                    tool=action, tools=self._registry.descriptions(self._lang)
+                )
                 await self._tracker.record_step(
                     step_type="observe", content=observation, success=False
                 )
@@ -277,7 +280,8 @@ class AgentEngine:
             f"{texts['plan_plan_header']}\n{plan_text}\n\n"
             f"{texts['plan_knowledge_header']}\n"
             f"{knowledge_summary or texts['none_recorded']}\n\n"
-            f"{texts['plan_tools_header']}\n{self._registry.descriptions()}"
+            f"{texts['plan_tools_header']}\n"
+            f"{self._registry.descriptions(self._lang)}"
         )
 
     async def _think(
@@ -407,6 +411,9 @@ class AgentEngine:
                     "type": s.step_type,
                     "summary": summary,
                     "tool": s.tool_name,
+                    # 显式成败与错误详情：界面据此判断，不必从摘要文本里找「失败」
+                    "success": bool(s.success),
+                    "error": s.error_message,
                 }
             )
         return steps

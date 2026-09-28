@@ -13,13 +13,6 @@ final agentRepositoryProvider = Provider<AgentRepository>(
   (ref) => AgentRepository(ref.watch(apiClientProvider)),
 );
 
-/// 判断一次工具调用是否失败。
-///
-/// 临时耦合：后端步骤摘要中的失败标记目前是中文（engine 写入「（失败: …）」），
-/// 因此这里只能做文本匹配。Phase B 会给步骤接口补上显式的 success 字段，
-/// 届时改为读取该字段，彻底去掉对文案的依赖。
-bool _stepFailed(String summary) => summary.contains('失败');
-
 /// 从后端会话中提取 create_quiz 的题目（修复版）：
 /// 工具返回格式为 [工具 create_quiz 返回]\n{"questions": [...]}。
 List<QuizQuestion>? extractQuizFromConversation(List<dynamic> conversation) {
@@ -131,7 +124,7 @@ class AgentChatNotifier extends Notifier<AgentChatState> {
         } else if (s.type == 'act') {
           thinking.add(ThinkingStep(
             toolName: s.tool,
-            failed: _stepFailed(s.summary),
+            failed: !s.success,
           ));
         }
       }
@@ -143,8 +136,11 @@ class AgentChatNotifier extends Notifier<AgentChatState> {
       // 工具步骤卡片
       for (final s in result.steps) {
         if (s.type == 'act') {
-          messages.add(ChatMessage(ChatMsgType.tool,
-              toolName: s.tool, toolSummary: s.summary));
+          messages.add(ChatMessage(
+            ChatMsgType.tool,
+            toolName: s.tool,
+            toolError: s.error,
+          ));
         }
       }
       // 最终回答

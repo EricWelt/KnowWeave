@@ -12,6 +12,11 @@ class SearchNotesTool(BaseTool):
         "根据用户查询在笔记库中做语义检索，返回最相关的笔记片段（含所属笔记、"
         "分块内容与相关度分数）。用于复习时回忆知识点、定位知识点所在的笔记。"
     )
+    description_en = (
+        "Search the note library semantically for a query and return the most relevant "
+        "note fragments: the note they belong to, the chunk text, and a relevance score. "
+        "Use it to recall a topic or to find which note covers it."
+    )
     parameters = {
         "type": "object",
         "properties": {

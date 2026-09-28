@@ -13,6 +13,11 @@ class ExplainConceptTool(BaseTool):
         "用费曼学习法（简单语言+类比+例子）解释一个概念，帮助用户快速理解。"
         "适合用户直接问「什么是XX」或复习中遇到不懂的术语。"
     )
+    description_en = (
+        "Explain a concept with the Feynman technique (plain language, an analogy, and "
+        "examples) so the user grasps it quickly. Good when the user asks what something "
+        "is, or meets an unfamiliar term while revising."
+    )
     parameters = {
         "type": "object",
         "properties": {

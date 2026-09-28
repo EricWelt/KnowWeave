@@ -20,6 +20,11 @@ class CrossReferenceTool(BaseTool):
         "找出与指定笔记内容相关的其他笔记（跨笔记知识关联），返回关联笔记及其原因。"
         "适合发现知识间的联系、建立知识网络。"
     )
+    description_en = (
+        "Find other notes related to the given note and return each one with the reason "
+        "for the link. Useful for spotting connections between topics and building a "
+        "knowledge network."
+    )
     parameters = {
         "type": "object",
         "properties": {

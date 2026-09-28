@@ -16,8 +16,7 @@ class ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (message.type) {
       case ChatMsgType.tool:
-        return _ToolCard(
-            toolName: message.toolName, summary: message.toolSummary ?? '');
+        return _ToolCard(toolName: message.toolName, error: message.toolError);
       case ChatMsgType.quiz:
         return QuizCard(
           questions: message.questions ?? const [],
@@ -114,30 +113,44 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
+/// 工具调用卡片：工具名 + （失败时）后端返回的错误详情。
+///
+/// 后端错误信息已按请求语言本地化，这里原样展示即可。
 class _ToolCard extends StatelessWidget {
   final String? toolName;
-  final String summary;
+  final String? error;
 
-  const _ToolCard({this.toolName, required this.summary});
+  const _ToolCard({this.toolName, this.error});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
+    final detail = error;
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       color: scheme.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(Icons.build_circle_outlined, size: 18, color: scheme.primary),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                  l10n.toolCallSummary(toolName ?? l10n.toolLabel, summary),
-                  style:
-                      TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.toolCalled(toolName ?? l10n.toolLabel),
+                      style: TextStyle(
+                          fontSize: 13, color: scheme.onSurfaceVariant)),
+                  if (detail != null && detail.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(detail,
+                        style: TextStyle(fontSize: 12, color: scheme.error)),
+                  ],
+                ],
+              ),
             ),
           ],
         ),

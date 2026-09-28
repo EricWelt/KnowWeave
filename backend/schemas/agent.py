@@ -7,10 +7,13 @@ from pydantic import BaseModel
 
 class SessionCreateRequest(BaseModel):
     goal: str
+    # 可选的 BCP 47 语言标签（如 "zh-Hans" / "en"）：优先于 Accept-Language
+    lang: str | None = None
 
 
 class ChatRequest(BaseModel):
     message: str
+    lang: str | None = None
 
 
 class AgentStepOut(BaseModel):
@@ -18,6 +21,9 @@ class AgentStepOut(BaseModel):
     type: str
     summary: str
     tool: str | None = None
+    # 显式成败标记：界面据此判断工具是否失败，不必从 summary 文本里猜
+    success: bool = True
+    error: str | None = None
 
 
 class EvalSummary(BaseModel):

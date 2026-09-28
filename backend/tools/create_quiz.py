@@ -20,6 +20,11 @@ class CreateQuizTool(BaseTool):
         "根据指定的笔记内容生成单项选择题（数量可调），用于评估用户掌握程度。"
         "用户作答后 Agent 会更新其知识掌握状态。"
     )
+    description_en = (
+        "Create multiple-choice questions from the given notes (the count is adjustable) "
+        "to check how well the user knows the material. The agent updates the user's "
+        "mastery state once they answer."
+    )
     parameters = {
         "type": "object",
         "properties": {

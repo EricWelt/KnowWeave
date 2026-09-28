@@ -26,6 +26,13 @@ enum AppLanguage {
       .firstWhere((e) => e.name == value, orElse: () => AppLanguage.system);
 }
 
+/// BCP 47 语言标签，用于 HTTP `Accept-Language`（如 `en` / `zh-Hans`）。
+extension LocaleTagX on Locale {
+  String get languageTag => scriptCode == null || scriptCode!.isEmpty
+      ? languageCode
+      : '$languageCode-$scriptCode';
+}
+
 /// 取当前语言资源：`context.l10n.loginButton`
 extension L10nX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);

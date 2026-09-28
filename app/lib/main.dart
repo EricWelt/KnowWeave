@@ -54,6 +54,19 @@ class AppLanguageNotifier extends Notifier<AppLanguage> {
   }
 }
 
+/// 当前生效的界面语言。
+///
+/// 手动选择时取选项本身；跟随系统时用平台语言解析到受支持的语言，
+/// 与 MaterialApp 内部的解析规则一致。
+final effectiveLocaleProvider = Provider<Locale>((ref) {
+  final explicit = ref.watch(appLanguageProvider).locale;
+  if (explicit != null) return explicit;
+  return basicLocaleListResolution(
+    WidgetsBinding.instance.platformDispatcher.locales,
+    AppLocalizations.supportedLocales,
+  );
+});
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
@@ -73,6 +86,14 @@ class KnowWeaveApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
     final language = ref.watch(appLanguageProvider);
+
+    // 把生效语言同步给 ApiClient（决定请求头 Accept-Language）。
+    //
+    // effectiveLocaleProvider 依赖 appLanguageProvider，语言一变本组件就会重建，
+    // 因此这里直接赋值即可，无需再注册监听。用赋值而不是让 providers.dart 反向
+    // 依赖本文件，是为了避免 main.dart 与 providers.dart 互相导入。
+    ref.read(apiClientProvider).languageTag =
+        ref.watch(effectiveLocaleProvider).languageTag;
     return MaterialApp.router(
       title: 'KnowWeave',
       debugShowCheckedModeBanner: false,

@@ -8,6 +8,8 @@
 from dataclasses import dataclass
 from typing import Any
 
+from ..agent.prompts import EN_LANG
+
 
 @dataclass
 class ToolResult:
@@ -21,8 +23,15 @@ class BaseTool:
     """所有工具的基类。子类实现 run()。"""
 
     name: str = ""
-    description: str = ""
+    description: str = ""  # 中文描述（默认）
+    description_en: str = ""  # 英文描述；为空时回落 description
     parameters: dict = {}  # JSON Schema
+
+    def localized_description(self, lang: str) -> str:
+        """按语言取工具描述。英文缺失时回落中文——宁可让模型读到中文，也不给空描述。"""
+        if lang == EN_LANG and self.description_en:
+            return self.description_en
+        return self.description
 
     def run(self, **kwargs) -> ToolResult:
         raise NotImplementedError
@@ -59,11 +68,17 @@ class ToolRegistry:
     def specs(self) -> list[dict]:
         return [t.to_spec() for t in self.all()]
 
-    def descriptions(self) -> str:
-        """生成注入 system prompt 的纯文本工具清单。"""
+    def descriptions(self, lang: str) -> str:
+        """生成注入 system prompt 的纯文本工具清单（描述按语言取）。
+
+        工具描述是模型判断「该不该调这个工具」的唯一依据，因此必须随语言切换；
+        工具名与参数名保持英文标识，它们是代码常量。
+        """
         lines = []
         for t in self.all():
             props = t.parameters.get("properties", {})
             params = ", ".join(f"{k}({v.get('type','?')})" for k, v in props.items())
-            lines.append(f"- {t.name}({params}): {t.description}")
+            lines.append(
+                f"- {t.name}({params}): {t.localized_description(lang)}"
+            )
         return "\n".join(lines)

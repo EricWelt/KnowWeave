@@ -19,6 +19,11 @@ class GenerateSummaryTool(BaseTool):
         "对指定的一个或多个笔记生成结构化摘要、关键概念列表与建议复习重点。"
         "适合开始复习一个主题时快速建立整体认识。"
     )
+    description_en = (
+        "Summarize one or more notes into a structured summary, a list of key concepts, "
+        "and suggested review points. Useful at the start of revising a topic to build an "
+        "overview."
+    )
     parameters = {
         "type": "object",
         "properties": {

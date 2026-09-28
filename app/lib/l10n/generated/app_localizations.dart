@@ -363,12 +363,6 @@ abstract class AppLocalizations {
   /// **' (failed)'**
   String get toolFailedSuffix;
 
-  /// No description provided for @toolCallSummary.
-  ///
-  /// In en, this message translates to:
-  /// **'Called {tool} · {summary}'**
-  String toolCallSummary(String tool, String summary);
-
   /// No description provided for @errorSend.
   ///
   /// In en, this message translates to:

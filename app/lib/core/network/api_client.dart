@@ -16,6 +16,10 @@ class ApiClient {
   final TokenStore _tokenStore;
   final String baseUrl;
 
+  /// 当前界面语言的 BCP 47 标签（如 `zh-Hans`）；非空时随每个请求发送
+  /// `Accept-Language`，后端据此选择 Prompt 语言与错误信息语言。
+  String? languageTag;
+
   ApiClient({
     required http.Client client,
     required TokenStore tokenStore,
@@ -30,6 +34,8 @@ class ApiClient {
   Map<String, String> _headers({bool json = true}) {
     final h = <String, String>{};
     if (json) h['Content-Type'] = 'application/json';
+    final tag = languageTag;
+    if (tag != null && tag.isNotEmpty) h['Accept-Language'] = tag;
     final t = _tokenStore.token;
     if (t != null && t.isNotEmpty) h['Authorization'] = 'Bearer $t';
     return h;
@@ -69,6 +75,10 @@ class ApiClient {
       ..headers['Authorization'] = 'Bearer ${_tokenStore.token}'
       ..files.add(await http.MultipartFile.fromPath('file', filePath,
           filename: filename));
+    final tag = languageTag;
+    if (tag != null && tag.isNotEmpty) {
+      request.headers['Accept-Language'] = tag;
+    }
     final streamed = await _client.send(request);
     final body = await streamed.stream.bytesToString();
     return _decode(http.Response(body, streamed.statusCode));

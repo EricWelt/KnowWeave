@@ -133,6 +133,8 @@ Cross-tab context: opening the assistant from a note seeds `agentDraftGoalProvid
 
 Field-level detail lives in [api.md](api.md).
 
+`ApiClient` sends the current interface language as `Accept-Language` (`en` or `zh-Hans`), so the backend returns prompts, step summaries, and error details in that language. The tag is kept in sync by `effectiveLocaleProvider` in `main.dart`.
+
 ## 8. Running Against a Device
 
 1. Put the computer and the phone on the same network.

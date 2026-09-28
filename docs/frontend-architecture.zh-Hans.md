@@ -133,6 +133,8 @@ apiClientProvider.overrideWithValue(
 
 字段级细节见 [api.zh-Hans.md](api.zh-Hans.md)。
 
+`ApiClient` 会把当前界面语言作为 `Accept-Language`（`en` 或 `zh-Hans`）随请求发出，后端据此返回对应语言的 Prompt、步骤摘要与错误信息；该标签由 `main.dart` 的 `effectiveLocaleProvider` 负责同步。
+
 ## 8. 真机联调
 
 1. 电脑与手机连同一网络。
